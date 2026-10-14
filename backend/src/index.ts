@@ -69,6 +69,7 @@ function registerRoutes() {
   post('/api/admin/whatsapp/generate-qr', adminModule.generateQRCode, [authMiddleware, adminMiddleware])
   post('/api/admin/whatsapp/reconnect', adminModule.reconnectWhatsApp, [authMiddleware, adminMiddleware])
   post('/api/admin/whatsapp/disconnect', adminModule.disconnectWhatsApp, [authMiddleware, adminMiddleware])
+  post('/api/admin/whatsapp/test-message', adminModule.testWhatsAppMessage, [authMiddleware, adminMiddleware])
   get('/api/admin/notifications/queue', adminModule.getNotificationQueue, [authMiddleware, adminMiddleware])
   get('/api/admin/notifications/failed', adminModule.getFailedNotifications, [authMiddleware, adminMiddleware])
   get('/api/admin/settings', adminModule.getAppSettings, [authMiddleware, adminMiddleware])

@@ -109,6 +109,7 @@ export const api = {
     getWhatsAppStatus: () => request<{ status: string; qrCode: string | null; botNumber: string | null; hasSession?: boolean }>('/admin/whatsapp/status'),
     generateQR: () => request<{ status: string; qrCode: string | null; botNumber: string | null }>('/admin/whatsapp/generate-qr', { method: 'POST' }),
     reconnectWhatsApp: () => request<{ message: string; qrCode?: string | null; status?: string; botNumber?: string | null }>('/admin/whatsapp/reconnect', { method: 'POST' }),
-    disconnectWhatsApp: () => request<{ message: string }>('/admin/whatsapp/disconnect', { method: 'POST' })
+    disconnectWhatsApp: () => request<{ message: string }>('/admin/whatsapp/disconnect', { method: 'POST' }),
+    testMessage: (phoneNumber: string, message?: string) => request<{ message: string; recipient: string }>('/admin/whatsapp/test-message', { method: 'POST', body: JSON.stringify({ phoneNumber, message }) })
   }
 }

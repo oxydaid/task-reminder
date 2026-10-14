@@ -48,10 +48,13 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: api.auth.logout,
     onSuccess: () => {
+      queryClient.setQueryData(['auth', 'me'], null)
       queryClient.clear()
       toast.success('Logout berhasil')
     },
     onError: (err: ApiError) => {
+      queryClient.setQueryData(['auth', 'me'], null)
+      queryClient.clear()
       toast.error(err.message)
     }
   })

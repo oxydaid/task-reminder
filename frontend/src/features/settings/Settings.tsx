@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -25,12 +27,19 @@ import {
   CheckCircle2,
   RefreshCw,
   Clock,
-  PowerOff
+  PowerOff,
+  Sun,
+  Moon,
+  Laptop,
+  Send,
+  Sparkles,
+  Check
 } from 'lucide-react'
 import { useAuth, useSettings } from '@/hooks/useApi'
+import { useTheme } from '@/context/ThemeContext'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
-import { formatPhoneNumber } from '@/lib/utils'
+import { formatPhoneNumber, cn } from '@/lib/utils'
 
 const settingsSchema = z.object({
   timezone: z.string().min(1),
@@ -71,10 +80,12 @@ const reminderOffsets = [
 ]
 
 export function Settings() {
+  const navigate = useNavigate()
   const { user, logout, changePassword } = useAuth()
+  const { theme, setTheme } = useTheme()
   const { settings, isLoading, update: updateSettings, isUpdating } = useSettings()
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'security' | 'bot'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'notifications' | 'security' | 'bot'>('profile')
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -84,6 +95,18 @@ export function Settings() {
   const [botStatus, setBotStatus] = useState<string>('disconnected')
   const [botNumber, setBotNumber] = useState<string | null>(null)
   const [isBotLoading, setIsBotLoading] = useState(false)
+
+  // Test WhatsApp message state
+  const [testPhone, setTestPhone] = useState('')
+  const [testMessage, setTestMessage] = useState('')
+  const [isSendingTest, setIsSendingTest] = useState(false)
+
+  // Populate test phone with user's phone if available
+  useEffect(() => {
+    if (!testPhone && (user?.whatsapp_number || (user as any)?.whatsappNumber)) {
+      setTestPhone(user?.whatsapp_number || (user as any)?.whatsappNumber || '')
+    }
+  }, [user, testPhone])
 
   const {
     handleSubmit: handleSubmitSettings,
@@ -226,8 +249,28 @@ export function Settings() {
     }
   }
 
+  const handleSendTestMessage = async () => {
+    if (!testPhone.trim()) {
+      toast.error('Nomor WhatsApp tujuan wajib diisi')
+      return
+    }
+    setIsSendingTest(true)
+    try {
+      const res = await api.admin.testMessage(testPhone.trim(), testMessage.trim() || undefined)
+      toast.success(res.message || 'Pesan pengingat tugas tes berhasil dikirim!')
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengirim pesan pengingat tes')
+    } finally {
+      setIsSendingTest(false)
+    }
+  }
+
   const handleLogout = async () => {
-    await logout()
+    try {
+      await logout()
+    } finally {
+      navigate('/login', { replace: true })
+    }
   }
 
   if (isLoading) {
@@ -241,9 +284,10 @@ export function Settings() {
 
   const tabs = [
     { id: 'profile', label: 'Profil', icon: User },
+    { id: 'appearance', label: 'Tema Tampilan', icon: Sun },
     { id: 'notifications', label: 'Pengingat WA', icon: Bell },
     { id: 'security', label: 'Keamanan', icon: Lock },
-    ...(user?.role === 'admin' ? [{ id: 'bot', label: 'Bot WA (Scan QR)', icon: Bot }] : [])
+    ...(user?.role === 'admin' ? [{ id: 'bot', label: 'Bot WA & Tes Notifikasi', icon: Bot }] : [])
   ]
 
   return (
@@ -333,6 +377,99 @@ export function Settings() {
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tab: Tema Tampilan */}
+      {activeTab === 'appearance' && (
+        <Card className="rounded-2xl border border-border/70 shadow-xs">
+          <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Sun className="h-4 w-4 text-amber-500" />
+              Tema Tampilan
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Pilih mode warna tampilan aplikasi yang paling nyaman di mata Anda
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-5 pt-0 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Option Light */}
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                className={cn(
+                  'relative flex flex-col items-center p-4 rounded-2xl border-2 text-left transition-all',
+                  theme === 'light'
+                    ? 'border-primary bg-primary/5 shadow-xs'
+                    : 'border-border/70 hover:border-border hover:bg-muted/40'
+                )}
+              >
+                {theme === 'light' && (
+                  <span className="absolute top-3 right-3 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </span>
+                )}
+                <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
+                  <Sun className="h-5 w-5" />
+                </div>
+                <span className="text-sm font-bold text-foreground">Mode Terang</span>
+                <span className="text-[11px] text-muted-foreground mt-0.5 text-center">
+                  Latar putih bersih & kontras cerah
+                </span>
+              </button>
+
+              {/* Option Dark */}
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                className={cn(
+                  'relative flex flex-col items-center p-4 rounded-2xl border-2 text-left transition-all',
+                  theme === 'dark'
+                    ? 'border-primary bg-primary/5 shadow-xs'
+                    : 'border-border/70 hover:border-border hover:bg-muted/40'
+                )}
+              >
+                {theme === 'dark' && (
+                  <span className="absolute top-3 right-3 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </span>
+                )}
+                <div className="h-10 w-10 rounded-xl bg-indigo-950 text-indigo-400 flex items-center justify-center mb-3">
+                  <Moon className="h-5 w-5" />
+                </div>
+                <span className="text-sm font-bold text-foreground">Mode Gelap</span>
+                <span className="text-[11px] text-muted-foreground mt-0.5 text-center">
+                  Nuansa hitam pekat & nyaman di mata
+                </span>
+              </button>
+
+              {/* Option System */}
+              <button
+                type="button"
+                onClick={() => setTheme('system')}
+                className={cn(
+                  'relative flex flex-col items-center p-4 rounded-2xl border-2 text-left transition-all',
+                  theme === 'system'
+                    ? 'border-primary bg-primary/5 shadow-xs'
+                    : 'border-border/70 hover:border-border hover:bg-muted/40'
+                )}
+              >
+                {theme === 'system' && (
+                  <span className="absolute top-3 right-3 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </span>
+                )}
+                <div className="h-10 w-10 rounded-xl bg-muted text-foreground flex items-center justify-center mb-3">
+                  <Laptop className="h-5 w-5" />
+                </div>
+                <span className="text-sm font-bold text-foreground">Ikuti Sistem</span>
+                <span className="text-[11px] text-muted-foreground mt-0.5 text-center">
+                  Otomatis sesuai pengaturan Windows / HP
+                </span>
+              </button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -655,6 +792,94 @@ export function Settings() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Kartu Uji Coba Pengingat Tugas (Scheduler Test) untuk Admin */}
+      {activeTab === 'bot' && user?.role === 'admin' && (
+        <Card className="rounded-2xl border border-border/70 shadow-xs">
+          <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Uji Coba Pengingat Tugas (Scheduler Test)
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Kirim pesan simulasi pengingat tugas langsung ke WhatsApp untuk membuktikan background scheduler & template notifikasi berjalan dengan baik.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-5 pt-0 space-y-4">
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Nomor WhatsApp Penerima *</Label>
+                <div className="relative">
+                  <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="tel"
+                    placeholder="Contoh: 081234567890"
+                    value={testPhone}
+                    onChange={e => setTestPhone(e.target.value)}
+                    className="pl-9 rounded-xl font-mono text-xs sm:text-sm"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Nomor HP tujuan pengiriman notifikasi pengingat tes.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Pesan Custom (Opsional)</Label>
+                <Textarea
+                  placeholder="Kosongkan untuk otomatis menggunakan template notifikasi tugas resmi dari sistem scheduler..."
+                  value={testMessage}
+                  onChange={e => setTestMessage(e.target.value)}
+                  rows={2}
+                  className="rounded-xl text-xs sm:text-sm resize-none"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Jika dikosongkan, bot otomatis mengambil tugas terdekat Anda dan mengirim format notifikasi scheduler resmi.
+                </p>
+              </div>
+
+              {/* Template Preview Box */}
+              <div className="p-3.5 rounded-xl border border-border/60 bg-muted/40 font-mono text-xs space-y-1 text-muted-foreground">
+                <p className="font-semibold text-foreground text-[11px]">Format Pesan Otomatis Scheduler:</p>
+                <p>Halo kak! 👋</p>
+                <p>Jangan lupa, ada tugas yang sebentar lagi deadline.</p>
+                <p>📚 Mata kuliah: [Nama Mata Kuliah]</p>
+                <p>📝 Tugas: [Judul Tugas]</p>
+                <p>⏰ Deadline: [Tenggat Waktu 24 Jam WIB]</p>
+                <p>📌 Sisa waktu: [Perhitungan Otomatis]</p>
+                <p className="text-[11px] text-primary font-medium mt-1">⚡ [Tes Notifikasi Otomatis - Scheduler Aktif]</p>
+              </div>
+
+              <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
+                <Button
+                  type="button"
+                  onClick={handleSendTestMessage}
+                  disabled={isSendingTest || botStatus !== 'connected'}
+                  className="rounded-xl text-xs font-semibold px-5 gap-2"
+                >
+                  {isSendingTest ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Mengirim Notifikasi...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      Kirim Pesan Pengingat Tes
+                    </>
+                  )}
+                </Button>
+
+                {botStatus !== 'connected' && (
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                    * Hubungkan bot WhatsApp terlebih dahulu untuk mencoba fitur ini.
+                  </span>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

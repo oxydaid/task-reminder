@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Outlet, Link, NavLink, useLocation } from 'react-router-dom'
+import { Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { cn, formatPhoneNumber } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -20,9 +20,13 @@ import {
   CheckCircle2,
   BookOpen,
   CalendarCheck,
-  ChevronDown
+  ChevronDown,
+  Sun,
+  Moon,
+  Laptop
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useApi'
+import { useTheme } from '@/context/ThemeContext'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -34,12 +38,18 @@ const navigation = [
 
 export function Layout() {
   const { user, logout } = useAuth()
+  const { theme, resolvedTheme, setTheme } = useTheme()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
 
   const handleLogout = async () => {
-    await logout()
-    setUserMenuOpen(false)
+    try {
+      await logout()
+    } finally {
+      setUserMenuOpen(false)
+      navigate('/login', { replace: true })
+    }
   }
 
   return (
@@ -86,8 +96,23 @@ export function Layout() {
             })}
           </nav>
 
-          {/* User Menu */}
-          <div className="flex items-center gap-2">
+          {/* User Menu & Theme Toggle */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Quick Theme Toggle */}
+            <button
+              type="button"
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              className="h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors focus:outline-hidden"
+              title={`Tema saat ini: ${theme === 'system' ? 'Sistem' : theme === 'dark' ? 'Gelap' : 'Terang'}. Klik untuk beralih.`}
+              aria-label="Ubah tema"
+            >
+              {resolvedTheme === 'dark' ? (
+                <Moon className="h-4 w-4 text-amber-400" />
+              ) : (
+                <Sun className="h-4 w-4 text-amber-500" />
+              )}
+            </button>
+
             <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <button
@@ -131,6 +156,56 @@ export function Layout() {
                     <span>Riwayat Notifikasi</span>
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <div className="px-3 py-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5 font-medium">
+                    <span>Tema Tampilan</span>
+                    <span className="text-[10px] capitalize font-semibold text-foreground">
+                      {theme === 'system' ? 'Sistem' : theme === 'dark' ? 'Gelap' : 'Terang'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 bg-muted/60 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setTheme('light')}
+                      className={cn(
+                        'flex items-center justify-center gap-1 py-1 rounded-lg text-xs font-semibold transition-all',
+                        theme === 'light'
+                          ? 'bg-background text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Sun className="h-3.5 w-3.5 text-amber-500" />
+                      <span>Light</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTheme('dark')}
+                      className={cn(
+                        'flex items-center justify-center gap-1 py-1 rounded-lg text-xs font-semibold transition-all',
+                        theme === 'dark'
+                          ? 'bg-background text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Moon className="h-3.5 w-3.5 text-indigo-400" />
+                      <span>Dark</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTheme('system')}
+                      className={cn(
+                        'flex items-center justify-center gap-1 py-1 rounded-lg text-xs font-semibold transition-all',
+                        theme === 'system'
+                          ? 'bg-background text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Laptop className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Auto</span>
+                    </button>
+                  </div>
+                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleLogout}

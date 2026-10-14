@@ -115,7 +115,11 @@ export function Settings() {
       api.admin.getWhatsAppStatus()
         .then(res => {
           setBotStatus(res.status)
-          setQrCode(res.qrCode)
+          if (res.status === 'connected') {
+            setQrCode(null)
+          } else if (res.qrCode) {
+            setQrCode(res.qrCode)
+          }
           setBotNumber(res.botNumber)
         })
         .catch(() => {})
@@ -133,15 +137,42 @@ export function Settings() {
     }
   }, [user?.role, activeTab])
 
-  const handleRefreshQR = async () => {
+  const handleGenerateQR = async () => {
     setIsBotLoading(true)
     try {
-      await api.admin.reconnectWhatsApp()
-      toast.success('Memuat ulang QR Code WhatsApp...')
-      const res = await api.admin.getWhatsAppStatus()
+      const res = await api.admin.generateQR()
       setBotStatus(res.status)
       setQrCode(res.qrCode)
       setBotNumber(res.botNumber)
+      if (res.qrCode) {
+        toast.success('QR Code berhasil dibuat! Silakan pindai di WhatsApp HP Anda.')
+      } else if (res.status === 'connected') {
+        toast.success('WhatsApp bot sudah terhubung!')
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal generate QR Code WhatsApp')
+    } finally {
+      setIsBotLoading(false)
+    }
+  }
+
+  const handleRefreshQR = async () => {
+    setIsBotLoading(true)
+    try {
+      const res = await api.admin.reconnectWhatsApp()
+      setBotStatus(res.status || 'connecting')
+      if (res.qrCode) {
+        setQrCode(res.qrCode)
+        toast.success('QR Code berhasil diperbarui! Silakan pindai.')
+      } else {
+        const statusRes = await api.admin.getWhatsAppStatus()
+        setBotStatus(statusRes.status)
+        setQrCode(statusRes.qrCode)
+        setBotNumber(statusRes.botNumber)
+        if (statusRes.qrCode) {
+          toast.success('QR Code berhasil diperbarui!')
+        }
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Gagal memuat ulang QR Code')
     } finally {
@@ -520,54 +551,107 @@ export function Settings() {
             ) : (
               /* Disconnected / Scanning QR State */
               <div className="space-y-4">
-                <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 text-xs text-blue-900 dark:text-blue-200 space-y-1.5">
-                  <p className="font-semibold flex items-center gap-1.5">
-                    <QrCode className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    Cara Menghubungkan WhatsApp via Scan QR:
-                  </p>
-                  <ol className="list-decimal list-inside space-y-1 text-[11px] opacity-90 pl-1">
-                    <li>Buka aplikasi WhatsApp di HP nomor yang ingin dijadikan bot.</li>
-                    <li>Buka menu <strong>Titik Tiga (Android)</strong> atau <strong>Pengaturan (iPhone)</strong>.</li>
-                    <li>Pilih <strong>Perangkat Tertaut (Linked Devices)</strong>.</li>
-                    <li>Tekan tombol <strong>Tautkan Perangkat</strong>.</li>
-                    <li>Arahkan kamera HP Anda ke QR Code di bawah ini.</li>
+                {/* Panduan Cara Hubungkan (High-Contrast & Crisp) */}
+                <div className="p-4 sm:p-5 rounded-2xl border border-border bg-card shadow-xs space-y-3">
+                  <div className="flex items-center gap-2 text-foreground font-bold text-xs sm:text-sm">
+                    <div className="h-6 w-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <QrCode className="h-3.5 w-3.5" />
+                    </div>
+                    <span>Panduan Menghubungkan WhatsApp (Scan QR):</span>
+                  </div>
+                  <ol className="list-decimal list-inside space-y-2 text-xs text-foreground/80 font-medium pl-1 leading-relaxed">
+                    <li>
+                      Buka aplikasi <strong className="text-foreground font-semibold">WhatsApp</strong> di HP nomor yang ingin dijadikan bot.
+                    </li>
+                    <li>
+                      Buka menu <strong className="text-foreground font-semibold">Titik Tiga (Android)</strong> atau <strong className="text-foreground font-semibold">Pengaturan (iPhone)</strong>.
+                    </li>
+                    <li>
+                      Pilih menu <strong className="text-foreground font-semibold">Perangkat Tertaut (Linked Devices)</strong>.
+                    </li>
+                    <li>
+                      Tekan tombol hijau <strong className="text-foreground font-semibold">Tautkan Perangkat</strong>.
+                    </li>
+                    <li>
+                      Arahkan kamera HP Anda ke gambar <strong className="text-primary font-semibold">QR Code</strong> di bawah ini.
+                    </li>
                   </ol>
                 </div>
 
                 {/* QR Display Container */}
-                <div className="flex flex-col items-center justify-center p-6 rounded-2xl border border-border/80 bg-background/80 text-center space-y-3">
-                  {qrCode ? (
-                    <div className="relative group p-2 rounded-2xl bg-white border border-border shadow-md">
-                      <img
-                        src={qrCode}
-                        alt="WhatsApp QR Code"
-                        className="w-56 h-56 sm:w-64 sm:h-64 object-contain rounded-xl"
-                      />
+                <div className="flex flex-col items-center justify-center p-6 rounded-2xl border border-border bg-card text-center space-y-4 shadow-xs">
+                  {isBotLoading && !qrCode ? (
+                    <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl bg-muted/30 border border-dashed border-primary/40 flex flex-col items-center justify-center p-4 text-center space-y-3">
+                      <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-foreground">Menghubungi Baileys...</p>
+                        <p className="text-[11px] text-muted-foreground">Sedang membuat QR Code baru</p>
+                      </div>
                     </div>
+                  ) : qrCode ? (
+                    <>
+                      <div className="relative group p-3 rounded-2xl bg-white border border-border shadow-md">
+                        <img
+                          src={qrCode}
+                          alt="WhatsApp QR Code"
+                          className="w-56 h-56 sm:w-64 sm:h-64 object-contain rounded-xl"
+                        />
+                      </div>
+
+                      <div className="space-y-1 max-w-sm">
+                        <p className="text-xs font-semibold text-foreground">
+                          QR Code Siap Dipindai
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Arahkan kamera WhatsApp HP Anda ke QR di atas. Halaman akan otomatis beralih saat terhubung.
+                        </p>
+                      </div>
+
+                      <div className="pt-1 flex flex-wrap justify-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRefreshQR}
+                          disabled={isBotLoading}
+                          className="rounded-xl text-xs font-semibold gap-1.5"
+                        >
+                          <RefreshCw className={`h-3.5 w-3.5 ${isBotLoading ? 'animate-spin' : ''}`} />
+                          {isBotLoading ? 'Memproses...' : 'Generate Ulang QR'}
+                        </Button>
+                      </div>
+                    </>
                   ) : (
-                    <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl bg-muted/40 border border-dashed border-border/80 flex flex-col items-center justify-center p-4">
-                      <Loader2 className="h-8 w-8 text-primary animate-spin mb-2" />
-                      <p className="text-xs text-muted-foreground font-medium">Menghubungi Baileys...</p>
-                      <p className="text-[11px] text-muted-foreground/80 mt-1">Menyiapkan QR Code baru</p>
+                    <div className="w-full max-w-sm py-4 flex flex-col items-center justify-center text-center space-y-3">
+                      <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                        <QrCode className="h-7 w-7" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-bold text-foreground">Hubungkan WhatsApp Bot</h4>
+                        <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+                          QR Code dibuat saat Anda memintanya. Tekan tombol di bawah untuk men-generate QR Code koneksi.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleGenerateQR}
+                        disabled={isBotLoading}
+                        className="rounded-xl text-xs font-semibold px-6 gap-2 mt-1"
+                      >
+                        {isBotLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Menyiapkan QR...
+                          </>
+                        ) : (
+                          <>
+                            <QrCode className="h-4 w-4" />
+                            Generate QR Code
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
-
-                  <p className="text-xs text-muted-foreground">
-                    QR Code diperbarui otomatis. Pindai sebelum kode kedaluwarsa.
-                  </p>
-
-                  <div className="pt-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRefreshQR}
-                      disabled={isBotLoading}
-                      className="rounded-xl text-xs font-semibold gap-1.5"
-                    >
-                      <RefreshCw className={`h-3.5 w-3.5 ${isBotLoading ? 'animate-spin' : ''}`} />
-                      Muat Ulang / Refresh QR
-                    </Button>
-                  </div>
                 </div>
               </div>
             )}

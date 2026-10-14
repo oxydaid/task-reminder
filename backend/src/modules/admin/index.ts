@@ -3,12 +3,12 @@ import { usersRepository } from '../../db/repositories/users'
 import { appSettingsRepository } from '../../db/repositories/appSettings'
 import { notificationsRepository } from '../../db/repositories/notifications'
 import {
-  initializeWhatsApp,
   getConnectionState,
   getQRCode,
   getBotNumber,
-  logoutWhatsApp,
-  restartWhatsApp
+  hasSavedSession,
+  requestQRCode,
+  logoutWhatsApp
 } from '../../lib/whatsapp'
 import { logger } from '../../lib/logger'
 
@@ -39,25 +39,38 @@ export async function getWhatsAppStatus(req: Request, res: Response): Promise<vo
     data: {
       status: state,
       qrCode: qr,
-      botNumber: botNum
+      botNumber: botNum,
+      hasSession: hasSavedSession()
     }
   })
 }
 
-export async function generatePairingCode(req: Request, res: Response): Promise<void> {
-  res.json({
-    success: false,
-    error: {
-      code: 'METHOD_DEPRECATED',
-      message: 'Metode pairing code digantikan dengan scan QR code langsung di web'
-    }
-  })
+export async function generateQRCode(req: Request, res: Response): Promise<void> {
+  try {
+    const result = await requestQRCode()
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error({ error }, 'Failed to generate QR code')
+    res.status(500).json({
+      success: false,
+      error: { code: 'FAILED', message: 'Gagal men-generate QR Code' }
+    })
+  }
 }
 
 export async function reconnectWhatsApp(req: Request, res: Response): Promise<void> {
   try {
-    await restartWhatsApp()
-    res.json({ success: true, data: { message: 'Koneksi WhatsApp diinisialisasi ulang' } })
+    const result = await requestQRCode()
+    res.json({
+      success: true,
+      data: {
+        message: 'QR Code baru berhasil dibuat',
+        ...result
+      }
+    })
   } catch (error) {
     logger.error({ error }, 'Failed to reconnect WhatsApp')
     res.status(500).json({ success: false, error: { code: 'FAILED', message: 'Gagal reconnect WhatsApp' } })

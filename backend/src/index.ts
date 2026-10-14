@@ -20,6 +20,7 @@ import * as settingsModule from './modules/settings'
 import * as notificationsUserModule from './modules/notifications/user'
 import * as adminModule from './modules/admin'
 import { initializeScheduler } from './modules/scheduler'
+import { getConnectionState } from './lib/whatsapp'
 
 function registerRoutes() {
   // Auth routes
@@ -65,7 +66,7 @@ function registerRoutes() {
   // Admin routes
   get('/api/admin/stats', adminModule.getAdminStats, [authMiddleware, adminMiddleware])
   get('/api/admin/whatsapp/status', adminModule.getWhatsAppStatus, [authMiddleware, adminMiddleware])
-  post('/api/admin/whatsapp/pairing-code', adminModule.generatePairingCode, [authMiddleware, adminMiddleware])
+  post('/api/admin/whatsapp/generate-qr', adminModule.generateQRCode, [authMiddleware, adminMiddleware])
   post('/api/admin/whatsapp/reconnect', adminModule.reconnectWhatsApp, [authMiddleware, adminMiddleware])
   post('/api/admin/whatsapp/disconnect', adminModule.disconnectWhatsApp, [authMiddleware, adminMiddleware])
   get('/api/admin/notifications/queue', adminModule.getNotificationQueue, [authMiddleware, adminMiddleware])
@@ -133,13 +134,13 @@ function serveStaticFrontend(reqUrl: string, res: any): boolean {
 
 async function startServer() {
   try {
-    logger.info('Initializing database...')
+    logger.debug('Initializing database...')
     initializeDatabase()
 
-    logger.info('Registering routes...')
+    logger.debug('Registering routes...')
     registerRoutes()
 
-    logger.info('Initializing scheduler...')
+    logger.debug('Initializing scheduler...')
     await initializeScheduler()
 
     const server = createServer(async (req, res) => {
@@ -162,9 +163,34 @@ async function startServer() {
     })
 
     server.listen(config.port, '0.0.0.0', () => {
-      logger.info({ port: config.port, env: config.nodeEnv }, 'Server started')
-      console.log(`🚀 Server running on http://0.0.0.0:${config.port}`)
-      console.log(`   Timezone: ${config.appTimezone}`)
+      const c = {
+        cyan: '\x1b[36m',
+        green: '\x1b[32m',
+        yellow: '\x1b[33m',
+        bold: '\x1b[1m',
+        dim: '\x1b[2m',
+        reset: '\x1b[0m'
+      }
+
+      const isConnected = getConnectionState() === 'connected'
+      const waText = isConnected
+        ? `${c.green}Terhubung (Aktif)${c.reset}`
+        : `${c.yellow}Menunggu Scan QR di Web (Pengaturan > Bot WA)${c.reset}`
+
+      console.log('')
+      console.log(`  ${c.cyan}┌─────────────────────────────────────────────────────────────┐${c.reset}`)
+      console.log(`  ${c.cyan}│${c.reset}  ${c.bold}TASK REMINDER${c.reset} ${c.dim}— Web App & Bot Pengingat Tugas Kuliah${c.reset}        ${c.cyan}│${c.reset}`)
+      console.log(`  ${c.cyan}└─────────────────────────────────────────────────────────────┘${c.reset}`)
+      console.log('')
+      console.log(`  ${c.green}➜${c.reset}  ${c.bold}Local:${c.reset}     ${c.cyan}http://localhost:${config.port}/${c.reset}`)
+      console.log(`  ${c.green}➜${c.reset}  ${c.bold}Network:${c.reset}   ${c.dim}http://0.0.0.0:${config.port}/${c.reset}`)
+      console.log(`  ${c.green}➜${c.reset}  ${c.bold}Timezone:${c.reset}  ${config.appTimezone} (WIB)`)
+      console.log(`  ${c.green}➜${c.reset}  ${c.bold}Database:${c.reset}  SQLite WAL Mode (${config.databasePath})`)
+      console.log(`  ${c.green}➜${c.reset}  ${c.bold}WhatsApp:${c.reset}  ${waText}`)
+      console.log(`  ${c.green}➜${c.reset}  ${c.bold}Scheduler:${c.reset} ${c.green}Aktif${c.reset} (${config.schedulerInterval})`)
+      console.log('')
+      console.log(`  ${c.dim}Tekan Ctrl+C untuk menghentikan server.${c.reset}`)
+      console.log('')
     })
 
     const shutdown = async (signal: string) => {

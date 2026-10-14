@@ -4,7 +4,7 @@ import { config } from '../config'
 const isProduction = config.nodeEnv === 'production'
 
 export const logger = pino({
-  level: isProduction ? 'info' : 'debug',
+  level: process.env.LOG_LEVEL || 'info',
   transport: isProduction ? undefined : {
     target: 'pino-pretty',
     options: {

@@ -20,7 +20,7 @@ export function startScheduler(): void {
     return
   }
 
-  logger.info({ schedule: config.schedulerInterval }, 'Starting notification scheduler')
+  logger.debug({ schedule: config.schedulerInterval }, 'Starting notification scheduler')
 
   schedulerTask = cron.schedule(config.schedulerInterval, async () => {
     if (!appSettingsRepository.isSchedulerEnabled()) return
@@ -39,7 +39,7 @@ export function startScheduler(): void {
     logger.debug({ duration }, 'Scheduler tick completed')
   })
 
-  logger.info('Notification scheduler started')
+  logger.debug('Notification scheduler started')
 }
 
 export function stopScheduler(): void {

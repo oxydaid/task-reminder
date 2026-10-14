@@ -9,6 +9,7 @@ import makeWASocket, {
 import QRCode from 'qrcode'
 import pino from 'pino'
 import { existsSync, mkdirSync, rmSync } from 'fs'
+import { join } from 'path'
 import { config } from '../config'
 import { logger } from './logger'
 import { normalizePhoneNumber } from './auth'
@@ -22,6 +23,9 @@ let qrCodeDataUrl: string | null = null
 let botNumber: string | null = null
 let isInitializing = false
 let reconnectTimeout: NodeJS.Timeout | null = null
+
+// Resolvers waiting for QR code generation
+const qrResolvers: Array<(qr: string | null) => void> = []
 
 // Message queue mutex to prevent race conditions during message dispatch
 const messageQueue: Array<() => Promise<void>> = []
@@ -61,8 +65,25 @@ function safeSaveCreds(saveFn: () => Promise<void>) {
   return saveCredsQueue
 }
 
-export async function initializeWhatsApp(): Promise<void> {
-  if (isInitializing) {
+export function hasSavedSession(): boolean {
+  try {
+    const credsPath = join(config.whatsappAuthDir, 'creds.json')
+    return existsSync(credsPath)
+  } catch {
+    return false
+  }
+}
+
+export async function initializeWhatsApp(forceNew = false): Promise<void> {
+  // If no saved session exists and not explicitly requested via Web QR button, do not spin up
+  if (!forceNew && !hasSavedSession()) {
+    logger.debug('No saved WhatsApp credentials. Skipping auto-initialization until requested.')
+    connectionState = 'disconnected'
+    qrCodeDataUrl = null
+    return
+  }
+
+  if (isInitializing && !forceNew) {
     logger.debug('WhatsApp initialization already in progress, skipping duplicate call')
     return
   }
@@ -90,7 +111,7 @@ export async function initializeWhatsApp(): Promise<void> {
         version = v.version
       }
     } catch (err) {
-      logger.warn('Failed to fetch latest Baileys version from web, using fallback version')
+      logger.warn('Using fallback WhatsApp Web protocol version')
     }
 
     // 4. Safely clean up previous socket if any exists
@@ -135,7 +156,13 @@ export async function initializeWhatsApp(): Promise<void> {
         connectionState = 'connecting'
         try {
           qrCodeDataUrl = await QRCode.toDataURL(qr, { scale: 8, margin: 2 })
-          logger.info('WhatsApp QR Code generated, ready for scanning via Web')
+          logger.info('New WhatsApp QR Code generated, waiting for scan via Web')
+
+          // Notify any waiting HTTP requests
+          while (qrResolvers.length > 0) {
+            const resolver = qrResolvers.shift()
+            if (resolver) resolver(qrCodeDataUrl)
+          }
         } catch (err) {
           logger.error({ err }, 'Failed to convert QR code to data URL')
         }
@@ -148,10 +175,20 @@ export async function initializeWhatsApp(): Promise<void> {
         botNumber = sock?.user?.id ? sock.user.id.split(':')[0].split('@')[0] : null
         appSettingsRepository.setWhatsAppConnected(true)
         logger.info({ botNumber }, 'WhatsApp Baileys client connected successfully')
+
+        while (qrResolvers.length > 0) {
+          const resolver = qrResolvers.shift()
+          if (resolver) resolver(null)
+        }
       }
 
       // Handle connection close / error
       if (connection === 'close') {
+        while (qrResolvers.length > 0) {
+          const resolver = qrResolvers.shift()
+          if (resolver) resolver(null)
+        }
+
         const error = lastDisconnect?.error as any
         const statusCode = error?.output?.statusCode
         const isLoggedOut = statusCode === DisconnectReason.loggedOut
@@ -159,16 +196,16 @@ export async function initializeWhatsApp(): Promise<void> {
 
         connectionState = 'disconnected'
         appSettingsRepository.setWhatsAppConnected(false)
-        logger.warn({ statusCode, isRestartRequired, isLoggedOut }, 'WhatsApp Baileys connection closed')
+        logger.warn({ statusCode, isRestartRequired, isLoggedOut }, 'WhatsApp connection closed')
 
         if (isRestartRequired) {
           // Restart immediately after QR scan / handshake without wiping session creds
           logger.info('WhatsApp requires restart after initial handshake, reconnecting immediately...')
           isInitializing = false
-          initializeWhatsApp()
+          initializeWhatsApp(true)
         } else if (isLoggedOut) {
-          // User logged out from WhatsApp mobile -> wipe saved session files and prepare fresh QR
-          logger.warn('WhatsApp session logged out from device. Resetting credentials...')
+          // User logged out from WhatsApp mobile -> wipe saved session files and wait for user to request new QR
+          logger.warn('WhatsApp session logged out from device. Resetting credentials.')
           qrCodeDataUrl = null
           botNumber = null
           try {
@@ -179,15 +216,16 @@ export async function initializeWhatsApp(): Promise<void> {
             logger.error({ e }, 'Failed to delete old auth directory')
           }
           isInitializing = false
-          reconnectTimeout = setTimeout(() => initializeWhatsApp(), 2000)
         } else if (statusCode === DisconnectReason.connectionReplaced) {
           logger.warn('WhatsApp connection replaced by another session. Halting automatic reconnect.')
           isInitializing = false
-        } else {
-          // Disconnected due to network timeout or transient error -> reconnect with 4s backoff
+        } else if (hasSavedSession()) {
+          // Disconnected due to network timeout but session exists -> reconnect with backoff
           logger.info('Transient WhatsApp disconnect. Reconnecting in 4 seconds...')
           isInitializing = false
           reconnectTimeout = setTimeout(() => initializeWhatsApp(), 4000)
+        } else {
+          isInitializing = false
         }
       }
     })
@@ -196,6 +234,41 @@ export async function initializeWhatsApp(): Promise<void> {
     connectionState = 'disconnected'
   } finally {
     isInitializing = false
+  }
+}
+
+export async function requestQRCode(): Promise<{ status: ConnectionStatus; qrCode: string | null; botNumber: string | null }> {
+  // If already connected, return connected status
+  if (connectionState === 'connected') {
+    return { status: 'connected', qrCode: null, botNumber }
+  }
+
+  // Force socket recreation to generate a fresh QR code
+  qrCodeDataUrl = null
+  connectionState = 'connecting'
+
+  const qrPromise = new Promise<string | null>((resolve) => {
+    const timeout = setTimeout(() => {
+      resolve(qrCodeDataUrl)
+    }, 20_000)
+
+    qrResolvers.push((qr) => {
+      clearTimeout(timeout)
+      resolve(qr)
+    })
+  })
+
+  // Start initialization explicitly with forceNew = true
+  initializeWhatsApp(true).catch(err => {
+    logger.error({ err }, 'Error during WhatsApp QR request')
+  })
+
+  const generated = await qrPromise
+
+  return {
+    status: connectionState,
+    qrCode: generated || qrCodeDataUrl,
+    botNumber
   }
 }
 
@@ -265,29 +338,12 @@ export async function logoutWhatsApp(): Promise<void> {
     }
 
     logger.info('WhatsApp session logged out and cleaned up')
-    // Generate fresh session / QR after cleanup
-    setTimeout(() => initializeWhatsApp(), 1500)
   } catch (error) {
     logger.error({ error }, 'Error during WhatsApp logout')
   }
 }
 
 export async function restartWhatsApp(): Promise<void> {
-  if (reconnectTimeout) {
-    clearTimeout(reconnectTimeout)
-    reconnectTimeout = null
-  }
-
-  if (sock) {
-    try {
-      sock.ev.removeAllListeners('connection.update')
-      sock.ev.removeAllListeners('creds.update')
-      sock.end(undefined)
-    } catch {}
-    sock = null
-  }
-
-  connectionState = 'disconnected'
-  qrCodeDataUrl = null
-  await initializeWhatsApp()
+  await logoutWhatsApp()
+  await requestQRCode()
 }

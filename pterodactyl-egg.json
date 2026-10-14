@@ -1,0 +1,119 @@
+{
+  "name": "Task Reminder",
+  "description": "Task Reminder - Aplikasi pengelolaan tugas kuliah dengan notifikasi WhatsApp",
+  "author": "Task Reminder Team",
+  "version": "1.0.0",
+  "docker_image": "node:20-alpine",
+  "startup_command": "node backend/dist/index.js",
+  "scripts": {
+    "installation": {
+      "script": "apk add --no-cache dumb-init sqlite && npm install -g pnpm@12.11.2 && pnpm install --frozen-lockfile && pnpm --filter frontend build && pnpm --filter backend build && mkdir -p /app/data/sessions /app/data/whatsapp-auth",
+      "container": "node:20-alpine",
+      "entrypoint": "sh"
+    },
+    "startup": {
+      "script": "dumb-init node backend/dist/index.js",
+      "container": "node:20-alpine",
+      "entrypoint": "sh"
+    }
+  },
+  "variables": [
+    {
+      "name": "NODE_ENV",
+      "description": "Environment mode",
+      "env_variable": "NODE_ENV",
+      "default_value": "production",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|in:production,development"
+    },
+    {
+      "name": "Port",
+      "description": "Port untuk aplikasi",
+      "env_variable": "PORT",
+      "default_value": "3000",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|numeric|min:1|max:65535"
+    },
+    {
+      "name": "Database Path",
+      "description": "Path file database SQLite (harus di volume persisten)",
+      "env_variable": "DATABASE_PATH",
+      "default_value": "/app/data/task-reminder.sqlite",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required"
+    },
+    {
+      "name": "Session Secret",
+      "description": "Secret key untuk session (HARUS diganti di production!)",
+      "env_variable": "SESSION_SECRET",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|min:32"
+    },
+    {
+      "name": "App Base URL",
+      "description": "URL base aplikasi (termasuk protocol)",
+      "env_variable": "APP_BASE_URL",
+      "default_value": "https://your-domain.com",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|url"
+    },
+    {
+      "name": "App Timezone",
+      "description": "Zona waktu default aplikasi",
+      "env_variable": "APP_TIMEZONE",
+      "default_value": "Asia/Jakarta",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required"
+    },
+    {
+      "name": "WhatsApp Auth Directory",
+      "description": "Direktori untuk menyimpan sesi WhatsApp (harus persisten)",
+      "env_variable": "WHATSAPP_AUTH_DIR",
+      "default_value": "/app/data/whatsapp-auth",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required"
+    },
+    {
+      "name": "CORS Origin",
+      "description": "Origin yang diizinkan untuk CORS",
+      "env_variable": "CORS_ORIGIN",
+      "default_value": "https://your-domain.com",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|url"
+    },
+    {
+      "name": "Scheduler Interval",
+      "description": "Cron expression untuk scheduler notifikasi",
+      "env_variable": "SCHEDULER_INTERVAL",
+      "default_value": "* * * * *",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required"
+    }
+  ],
+  "mounts": [
+    {
+      "name": "Data",
+      "description": "Persistent storage untuk database dan sesi WhatsApp",
+      "mount_path": "/app/data",
+      "default_size": 1024
+    }
+  ],
+  "ports": [
+    {
+      "name": "HTTP",
+      "description": "Port HTTP aplikasi",
+      "port": 3000,
+      "protocol": "tcp"
+    }
+  ]
+}

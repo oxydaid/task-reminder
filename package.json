@@ -1,0 +1,19 @@
+{
+  "name": "task-reminder",
+  "version": "1.0.0",
+  "description": "Task Reminder - Web App untuk pengelolaan tugas kuliah dengan notifikasi WhatsApp",
+  "private": true,
+  "packageManager": "pnpm@12.11.2",
+  "scripts": {
+    "dev": "pnpm --filter backend dev",
+    "build": "pnpm --filter frontend build && pnpm --filter backend build",
+    "prestart": "pnpm --filter backend db:migrate",
+    "start": "node backend/dist/index.js",
+    "db:migrate": "pnpm --filter backend db:migrate",
+    "db:seed": "pnpm --filter backend db:seed",
+    "typecheck": "pnpm --filter frontend typecheck && pnpm --filter backend typecheck"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

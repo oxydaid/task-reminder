@@ -36,9 +36,13 @@ export function useAuth() {
 
   const registerMutation = useMutation({
     mutationFn: api.auth.register,
-    onSuccess: () => {
-      toast.success('Registrasi berhasil! Silakan verifikasi nomor WhatsApp Anda.')
+    onSuccess: (res: any) => {
+      const user = res?.data?.user || res?.user
+      if (user) {
+        queryClient.setQueryData(['auth', 'me'], user)
+      }
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      toast.success('Pendaftaran berhasil! Selamat datang di Task Reminder.')
     },
     onError: (err: ApiError) => {
       toast.error(err.message)

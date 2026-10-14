@@ -4,6 +4,7 @@ import { usersRepository } from '../../db/repositories/users'
 import { sessionsRepository } from '../../db/repositories/sessions'
 import { verificationCodesRepository } from '../../db/repositories/verificationCodes'
 import { hashPassword, verifyPassword, normalizePhoneNumber, generateVerificationCode, hashToken, createSessionToken, createSessionHash, calculateExpiryDate } from '../../lib/auth'
+import { sendMessage } from '../../lib/whatsapp'
 import { registerSchema, loginSchema, verifyWhatsAppSchema, changePasswordSchema } from '../../lib/validation'
 import type { Request, Response } from '../../http'
 
@@ -29,26 +30,44 @@ export async function register(req: Request, res: Response): Promise<void> {
     passwordHash,
     timezone: config.appTimezone,
     reminderEnabled: true,
-    defaultReminderOffsetMinutes: config.defaultReminderOffsetMinutes
+    defaultReminderOffsetMinutes: config.defaultReminderOffsetMinutes,
+    whatsappVerifiedAt: new Date().toISOString()
   })
 
-  const code = generateVerificationCode()
-  const codeHash = hashToken(code)
-  const expiresAt = new Date(Date.now() + config.verificationCodeExpiry).toISOString()
+  // Create active session cookie immediately so user is logged in
+  const sessionToken = createSessionToken()
+  const sessionHash = createSessionHash(sessionToken)
+  const expiresAt = calculateExpiryDate(30)
 
-  verificationCodesRepository.create({
-    whatsappNumber: normalizedPhone,
-    codeHash,
+  sessionsRepository.create({
+    userId: user.id,
+    sessionHash,
     expiresAt
   })
 
-  logger.info({ userId: user.id, phone: normalizedPhone }, 'User registered, verification code generated')
+  res.setHeader('Set-Cookie', `session=${sessionToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${config.sessionMaxAge / 1000}`)
+
+  logger.info({ userId: user.id, phone: normalizedPhone }, 'User registered and automatically verified')
+
+  // Send friendly WhatsApp welcome message if bot is active
+  const welcomeMsg = `🎉 *Pendaftaran Berhasil!* \n\nHalo kak! Selamat datang di *Task Reminder*. Akun WhatsApp Anda (*${normalizedPhone}*) berhasil terdaftar dan aktif.\n\nBot ini akan otomatis mengingatkan jadwal & deadline tugas kuliah Anda. Selamat belajar! 🚀`
+  sendMessage(normalizedPhone, welcomeMsg).catch((err) => {
+    logger.debug({ err, phone: normalizedPhone }, 'Could not send WhatsApp welcome message on register')
+  })
 
   res.status(201).json({
     success: true,
     data: {
-      user: { id: user.id, whatsappNumber: user.whatsapp_number, whatsapp_number: user.whatsapp_number },
-      verificationCode: config.nodeEnv === 'development' ? code : undefined
+      user: {
+        id: user.id,
+        whatsappNumber: user.whatsapp_number,
+        whatsapp_number: user.whatsapp_number,
+        role: user.role,
+        timezone: user.timezone,
+        reminderEnabled: user.reminder_enabled === 1,
+        defaultReminderOffsetMinutes: user.default_reminder_offset_minutes,
+        whatsappVerifiedAt: user.whatsapp_verified_at
+      }
     }
   })
 }
@@ -63,30 +82,16 @@ export async function verifyWhatsApp(req: Request, res: Response): Promise<void>
   const { whatsappNumber, code } = parseResult.data
   const normalizedPhone = normalizePhoneNumber(whatsappNumber)
 
-  const codeHash = hashToken(code)
-  const verification = verificationCodesRepository.findValidByWhatsAppNumber(normalizedPhone)
-
-  if (!verification) {
-    res.status(400).json({ success: false, error: { code: 'INVALID_CODE', message: 'Kode verifikasi tidak valid atau sudah kadaluwarsa' } })
-    return
-  }
-
-  if (verification.code_hash !== codeHash) {
-    verificationCodesRepository.incrementAttempts(verification.id)
-    res.status(400).json({ success: false, error: { code: 'INVALID_CODE', message: 'Kode verifikasi salah' } })
-    return
-  }
-
-  verificationCodesRepository.consume(verification.id)
   const user = usersRepository.findByWhatsAppNumber(normalizedPhone)
-  
   if (!user) {
     res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Pengguna tidak ditemukan' } })
     return
   }
 
-  usersRepository.verifyWhatsApp(user.id)
-  logger.info({ userId: user.id }, 'WhatsApp verified')
+  if (!user.whatsapp_verified_at) {
+    usersRepository.verifyWhatsApp(user.id)
+    logger.info({ userId: user.id }, 'WhatsApp verified')
+  }
 
   res.json({ success: true, data: { message: 'Verifikasi berhasil' } })
 }
@@ -107,7 +112,7 @@ export async function requestVerificationCode(req: Request, res: Response): Prom
   }
 
   if (user.whatsapp_verified_at) {
-    res.status(400).json({ success: false, error: { code: 'ALREADY_VERIFIED', message: 'Nomor sudah diverifikasi' } })
+    res.json({ success: true, data: { message: 'Nomor WhatsApp sudah terverifikasi', alreadyVerified: true } })
     return
   }
 
@@ -124,6 +129,11 @@ export async function requestVerificationCode(req: Request, res: Response): Prom
   })
 
   logger.info({ userId: user.id }, 'New verification code requested')
+
+  const msg = `🔐 *Kode Verifikasi Task Reminder*\n\nKode verifikasi akun Anda adalah: *${code}*\n\nKode berlaku selama 10 menit.`
+  sendMessage(normalizedPhone, msg).catch((err) => {
+    logger.warn({ err, phone: normalizedPhone }, 'Failed to send WhatsApp verification message')
+  })
 
   res.json({
     success: true,
@@ -155,9 +165,11 @@ export async function login(req: Request, res: Response): Promise<void> {
     return
   }
 
+  // Auto-verify existing registered users if they were previously unverified
   if (!user.whatsapp_verified_at) {
-    res.status(403).json({ success: false, error: { code: 'NOT_VERIFIED', message: 'Nomor WhatsApp belum diverifikasi' } })
-    return
+    usersRepository.verifyWhatsApp(user.id)
+    user.whatsapp_verified_at = new Date().toISOString()
+    logger.info({ userId: user.id, phone: normalizedPhone }, 'Existing user auto-verified upon successful login')
   }
 
   const sessionToken = createSessionToken()
@@ -182,7 +194,8 @@ export async function login(req: Request, res: Response): Promise<void> {
         role: user.role,
         timezone: user.timezone,
         reminderEnabled: user.reminder_enabled === 1,
-        defaultReminderOffsetMinutes: user.default_reminder_offset_minutes
+        defaultReminderOffsetMinutes: user.default_reminder_offset_minutes,
+        whatsappVerifiedAt: user.whatsapp_verified_at
       }
     }
   })

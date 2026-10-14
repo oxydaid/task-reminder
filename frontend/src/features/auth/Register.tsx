@@ -28,7 +28,7 @@ type RegisterForm = z.infer<typeof registerSchema>
 export function Register() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const redirect = searchParams.get('redirect') || '/verify-whatsapp'
+  const redirect = searchParams.get('redirect') || '/'
   const { register: registerUser, isRegisterPending } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
 

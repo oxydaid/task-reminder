@@ -133,6 +133,11 @@ export function initializeDatabase() {
     db.exec(migration)
   }
 
+  // Auto-verify all existing users who registered earlier but were left unverified
+  try {
+    db.exec("UPDATE users SET whatsapp_verified_at = datetime('now') WHERE whatsapp_verified_at IS NULL;")
+  } catch {}
+
   const defaultSettings = [
     { key: 'scheduler_enabled', value: 'true', description: 'Whether the notification scheduler is enabled' },
     { key: 'whatsapp_connected', value: 'false', description: 'WhatsApp connection status' },

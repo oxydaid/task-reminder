@@ -139,14 +139,19 @@ export function VerifyWhatsApp() {
             </Button>
           </form>
 
-          <div className="mt-6 p-4 space-y-3 text-sm bg-muted/50 rounded-lg">
-            <h4 className="font-medium">Cara Verifikasi:</h4>
-            <ol className="space-y-2 text-muted-foreground list-decimal list-inside">
-              <li>Buka WhatsApp di HP Anda</li>
-              <li>Mulai chat ke nomor bot Task Reminder</li>
-              <li>Kirim pesan: <code className="bg-background px-1 rounded">VERIFY 123456</code> (ganti dengan kode Anda)</li>
-              <li>Klik tombol Verifikasi di atas</li>
-            </ol>
+          <div className="mt-6 p-4 space-y-3 text-xs bg-muted/50 rounded-xl">
+            <h4 className="font-semibold text-foreground">Sudah Mendaftar?</h4>
+            <p className="text-muted-foreground">
+              Akun Anda sudah otomatis aktif. Jika Anda sudah memiliki password, silakan langsung masuk ke akun Anda.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-xs font-semibold rounded-xl mt-1"
+              onClick={() => navigate('/login', { replace: true })}
+            >
+              Langsung Masuk ke Akun
+            </Button>
           </div>
         </CardContent>
       </Card>

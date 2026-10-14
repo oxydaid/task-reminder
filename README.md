@@ -96,7 +96,7 @@ Bukan sekadar buku catatan tugas biasa, **Task Reminder terhubung langsung denga
 1. Buka tautan website **Task Reminder** di peramban (Chrome, Safari, Edge, dll).
 2. Klik tombol **Daftar Akun Baru**.
 3. Masukkan nomor WhatsApp aktif Anda (contoh: `081234567890`) dan buat kata sandi yang aman.
-4. Masukkan kode verifikasi yang diberikan untuk mengaktifkan nomor Anda.
+4. Klik **Daftar**. Akun Anda langsung aktif dan masuk ke aplikasi secara otomatis!
 5. Selesai! Anda siap mengatur jadwal kuliah.
 
 ---

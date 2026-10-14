@@ -17,9 +17,11 @@ export interface User {
 export interface CreateUserInput {
   whatsappNumber: string
   passwordHash: string
+  role?: 'user' | 'admin'
   timezone?: string
   reminderEnabled?: boolean
   defaultReminderOffsetMinutes?: number
+  whatsappVerifiedAt?: string | null
 }
 
 export interface UpdateUserInput {
@@ -35,8 +37,8 @@ export interface UpdateUserInput {
 export const usersRepository = {
   create(input: CreateUserInput): User {
     const stmt = db.prepare(`
-      INSERT INTO users (whatsapp_number, password_hash, timezone, reminder_enabled, default_reminder_offset_minutes)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO users (whatsapp_number, password_hash, timezone, reminder_enabled, default_reminder_offset_minutes, whatsapp_verified_at)
+      VALUES (?, ?, ?, ?, ?, ?)
       RETURNING *
     `)
     return stmt.get(
@@ -44,7 +46,8 @@ export const usersRepository = {
       input.passwordHash,
       input.timezone ?? 'Asia/Jakarta',
       input.reminderEnabled ? 1 : 0,
-      input.defaultReminderOffsetMinutes ?? 2880
+      input.defaultReminderOffsetMinutes ?? 2880,
+      input.whatsappVerifiedAt !== undefined ? input.whatsappVerifiedAt : new Date().toISOString()
     ) as unknown as User
   },
 

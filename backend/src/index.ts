@@ -1,7 +1,11 @@
 import { createServer } from 'http'
 import { existsSync, statSync, createReadStream } from 'fs'
-import { join, extname } from 'path'
+import { join, extname, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import { config } from './config'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 import { initializeDatabase, closeDatabase } from './db'
 import { logger } from './lib/logger'
 import { handleRequest } from './router'

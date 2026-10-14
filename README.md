@@ -1,6 +1,45 @@
-# ✨ Task Reminder — Asisten Pintar & Pengingat Tugas Kuliah 🎓📱
+<div align="center">
 
-> *"Selamat tinggal tugas yang terlewat! Biarkan bot WhatsApp yang mengingatkan deadline, kamu fokus berkarya dan meraih nilai terbaik."* 🚀
+  # ✨ TASK REMINDER ✨
+  
+  <p align="center">
+    <strong>Asisten Cerdas & Pengingat Tugas Kuliah Otomatis Terhubung Langsung ke WhatsApp 🎓📱</strong>
+  </p>
+
+  <p align="center">
+    <em>"Selamat tinggal tugas yang terlewat! Biarkan bot WhatsApp yang mengingatkan deadline, kamu fokus berkarya dan meraih nilai terbaik." 🚀</em>
+  </p>
+
+  <p align="center">
+    <a href="#-fitur-fitur-unggulan">
+      <img src="https://img.shields.io/badge/Fitur-Lengkap%20%26%20Cerdas-4F46E5?style=for-the-badge&logo=sparkles&logoColor=white" alt="Fitur" />
+    </a>
+    <a href="#-1-notifikasi-pengingat-whatsapp-otomatis">
+      <img src="https://img.shields.io/badge/WhatsApp-Notifikasi%20Otomatis-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="WhatsApp" />
+    </a>
+    <a href="#-2-pencatatan-tugas-yang-rapi--jelas">
+      <img src="https://img.shields.io/badge/Format%20Waktu-24%20Jam%20WIB-EA580C?style=for-the-badge&logo=clock&logoColor=white" alt="Waktu 24 Jam" />
+    </a>
+    <a href="#-5-mode-tampilan-terang-gelap--otomatis">
+      <img src="https://img.shields.io/badge/Mode%20Tampilan-Terang%20%26%20Gelap-0284C7?style=for-the-badge&logo=color-switch&logoColor=white" alt="Tema" />
+    </a>
+    <a href="#-6-ramah-pengguna-di-smartphone-bisa-dijadikan-aplikasi-hp">
+      <img src="https://img.shields.io/badge/PWA-Installable%20Mobile-8B5CF6?style=for-the-badge&logo=pwa&logoColor=white" alt="PWA" />
+    </a>
+    <a href="#-pertanyaan-yang-sering-diajukan-faq">
+      <img src="https://img.shields.io/badge/Dibuat%20Untuk-Mahasiswa%20Indonesia%20🇮🇩-E11D48?style=for-the-badge" alt="Indonesia" />
+    </a>
+  </p>
+
+  <p align="center">
+    <a href="#-apa-itu-task-reminder">Tentang</a> •
+    <a href="#-fitur-fitur-unggulan">Fitur Utama</a> •
+    <a href="#-panduan-praktis--tata-cara-pemakaian">Cara Pakai</a> •
+    <a href="#-tips--trik-agar-kuliah-makin-tenang">Tips Kuliah</a> •
+    <a href="#-pertanyaan-yang-sering-diajukan-faq">FAQ</a>
+  </p>
+
+</div>
 
 ---
 
@@ -151,7 +190,9 @@ Jika Anda bertindak sebagai pengelola sistem:
 
 ---
 
-<p align="center">
-  Dibuat dengan segenap cinta untuk mendukung semangat belajar mahasiswa Indonesia! 🇮🇩❤️<br>
-  <strong>Kelola Tugas Lebih Rapi, Raih Prestasi Lebih Tinggi.</strong>
-</p>
+<div align="center">
+  <p>
+    Dibuat dengan segenap cinta untuk mendukung semangat belajar mahasiswa Indonesia! 🇮🇩❤️<br />
+    <strong>Kelola Tugas Lebih Rapi, Raih Prestasi Lebih Tinggi.</strong>
+  </p>
+</div>

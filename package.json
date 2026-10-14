@@ -7,13 +7,16 @@
   "scripts": {
     "dev": "pnpm --filter backend dev",
     "build": "pnpm --filter frontend build && pnpm --filter backend build",
-    "prestart": "pnpm --filter backend db:migrate",
     "start": "node backend/dist/index.js",
-    "db:migrate": "pnpm --filter backend db:migrate",
-    "db:seed": "pnpm --filter backend db:seed",
+    "db:migrate": "tsx backend/src/db/migrate.ts",
+    "db:seed": "tsx backend/src/db/seed.ts",
     "typecheck": "pnpm --filter frontend typecheck && pnpm --filter backend typecheck"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15"
   }
 }

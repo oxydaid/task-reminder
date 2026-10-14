@@ -164,7 +164,14 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.30)(supports-color@7.2.0)(tsx@4.23.15)(typescript@5.9.3)
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
 
   backend:
     dependencies:

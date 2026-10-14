@@ -20,12 +20,13 @@ export function formatTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleTimeString('id-ID', {
     hour: '2-digit',
-    minute: '2-digit'
-  })
+    minute: '2-digit',
+    hour12: false
+  }).replace('.', ':')
 }
 
 export function formatDateTime(date: string | Date): string {
-  return `${formatDate(date)} ${formatTime(date)}`
+  return `${formatDate(date)} ${formatTime(date)} WIB`
 }
 
 export function formatRelativeTime(date: string | Date): string {
@@ -39,15 +40,15 @@ export function formatRelativeTime(date: string | Date): string {
   if (diffMs < 0) {
     const pastDays = Math.floor(-diffMs / (1000 * 60 * 60 * 24))
     const pastHours = Math.floor(-diffMs / (1000 * 60 * 60))
-    if (pastDays > 0) return `${pastDays} hari yang lalu`
-    if (pastHours > 0) return `${pastHours} jam yang lalu`
-    return 'Barabaram'
+    if (pastDays > 0) return `${pastDays} hari lalu`
+    if (pastHours > 0) return `${pastHours} jam lalu`
+    return 'Baru saja'
   }
 
   if (diffDays > 0) return `${diffDays} hari lagi`
   if (diffHours > 0) return `${diffHours} jam lagi`
   if (diffMinutes > 0) return `${diffMinutes} menit lagi`
-  return 'Sekarang'
+  return 'Hari ini'
 }
 
 export function getPriorityColor(priority: 'low' | 'medium' | 'high'): string {

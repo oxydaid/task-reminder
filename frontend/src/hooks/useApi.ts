@@ -165,9 +165,9 @@ export function useSubjects() {
 export function useTasks(params?: Record<string, string>) {
   const queryClient = useQueryClient()
 
-  const { data, isLoading, error, refetch } = useQuery<{ tasks: Task[]; meta: { total: number; page: number; limit: number; totalPages: number } }>({
+  const { data, isLoading, error, refetch } = useQuery<any>({
     queryKey: ['tasks', params],
-    queryFn: () => api.tasks.list(params) as any
+    queryFn: () => api.tasks.list(params)
   })
 
   const createMutation = useMutation({
@@ -219,9 +219,15 @@ export function useTasks(params?: Record<string, string>) {
     }
   })
 
+  const taskList: Task[] = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.tasks)
+    ? data.tasks
+    : []
+
   return {
-    tasks: data?.tasks || [],
-    meta: data?.meta,
+    tasks: taskList,
+    meta: Array.isArray(data) ? undefined : data?.meta,
     isLoading,
     error,
     refetch,

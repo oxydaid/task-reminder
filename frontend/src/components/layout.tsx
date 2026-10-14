@@ -96,11 +96,11 @@ export function Layout() {
                 >
                   <Avatar className="h-8 w-8 ring-1 ring-border shadow-xs">
                     <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                      {user?.whatsapp_number ? user.whatsapp_number.slice(-2) : 'TR'}
+                      {(user?.whatsapp_number || (user as any)?.whatsappNumber) ? (user?.whatsapp_number || (user as any)?.whatsappNumber).slice(-2) : 'TR'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="hidden sm:flex flex-col text-left">
-                    <span className="text-xs font-semibold leading-tight">{formatPhoneNumber(user?.whatsapp_number || '')}</span>
+                    <span className="text-xs font-semibold leading-tight">{formatPhoneNumber(user?.whatsapp_number || (user as any)?.whatsappNumber || '')}</span>
                     <span className="text-[10px] text-muted-foreground capitalize">{user?.role === 'admin' ? 'Administrator' : 'Mahasiswa'}</span>
                   </div>
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
@@ -110,7 +110,7 @@ export function Layout() {
                 <DropdownMenuLabel className="font-normal p-3">
                   <div className="flex flex-col space-y-1">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-foreground">{formatPhoneNumber(user?.whatsapp_number || '')}</p>
+                      <p className="text-xs font-semibold text-foreground">{formatPhoneNumber(user?.whatsapp_number || (user as any)?.whatsappNumber || '')}</p>
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                         {user?.role === 'admin' ? 'Admin' : 'User'}
                       </span>

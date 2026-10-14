@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useDashboard, useTasks } from '@/hooks/useApi'
 import { formatRelativeTime, getPriorityColor, getPriorityLabel, isOverdue, isDueSoon, cn } from '@/lib/utils'
+import { format } from 'date-fns'
 import { Task } from '@/types'
 
 export function Dashboard() {
@@ -198,19 +199,19 @@ export function Dashboard() {
                         </p>
                         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground mt-1">
                           {task.subject_name && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground font-medium">
-                              <BookOpen className="h-3 w-3 text-muted-foreground" />
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground font-medium shrink-0 whitespace-nowrap">
+                              <BookOpen className="h-3 w-3 shrink-0 text-muted-foreground" />
                               {task.subject_name}
                             </span>
                           )}
                           <span className={cn(
-                            'inline-flex items-center gap-1 font-medium',
+                            'inline-flex items-center gap-1 font-medium shrink-0 whitespace-nowrap',
                             overdue ? 'text-red-600 font-bold' : dueSoon ? 'text-amber-600 font-semibold' : ''
                           )}>
-                            <Clock className="h-3 w-3" />
-                            {formatRelativeTime(task.deadline_at)}
+                            <Clock className="h-3 w-3 shrink-0" />
+                            {formatRelativeTime(task.deadline_at)} • {format(new Date(task.deadline_at), 'HH:mm')} WIB
                           </span>
-                          <span className={cn('px-1.5 py-0.2 rounded text-[10px] uppercase font-bold', getPriorityColor(task.priority))}>
+                          <span className={cn('px-1.5 py-0.2 rounded text-[10px] uppercase font-bold shrink-0 whitespace-nowrap', getPriorityColor(task.priority))}>
                             {getPriorityLabel(task.priority)}
                           </span>
                         </div>

@@ -18,7 +18,8 @@ import {
   Circle,
   SlidersHorizontal,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react'
 import { useTasks, useSubjects } from '@/hooks/useApi'
 import { getPriorityColor, getPriorityLabel, isOverdue, isDueSoon, cn } from '@/lib/utils'
@@ -345,15 +346,15 @@ export function Tasks() {
                     {/* Metadata Badges */}
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       {task.subject_name && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground">
-                          <BookOpen className="h-3 w-3 text-muted-foreground" />
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground whitespace-nowrap shrink-0">
+                          <BookOpen className="h-3 w-3 shrink-0 text-muted-foreground" />
                           {task.subject_name}
                         </span>
                       )}
 
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md',
+                          'inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-md whitespace-nowrap shrink-0',
                           isDone
                             ? 'bg-muted text-muted-foreground'
                             : overdue
@@ -363,21 +364,24 @@ export function Tasks() {
                             : 'bg-muted/80 text-muted-foreground'
                         )}
                       >
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(task.deadline_at), 'dd MMM yyyy, HH:mm', { locale: localeId })}
+                        <Calendar className="h-3 w-3 shrink-0" />
+                        <span>{format(new Date(task.deadline_at), 'dd MMM yyyy', { locale: localeId })}</span>
+                        <span className="opacity-30">•</span>
+                        <Clock className="h-3 w-3 shrink-0" />
+                        <span>{format(new Date(task.deadline_at), 'HH:mm')} WIB</span>
                       </span>
 
                       {/* Priority Tag */}
                       <span className={cn(
-                        'inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md uppercase tracking-wider',
+                        'inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md uppercase tracking-wider whitespace-nowrap shrink-0',
                         getPriorityColor(task.priority)
                       )}>
                         {getPriorityLabel(task.priority)}
                       </span>
 
                       {overdue && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-600 dark:text-red-400">
-                          <AlertCircle className="h-3 w-3" />
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 whitespace-nowrap shrink-0">
+                          <AlertCircle className="h-3 w-3 shrink-0" />
                           Terlewat
                         </span>
                       )}

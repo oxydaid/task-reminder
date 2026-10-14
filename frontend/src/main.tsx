@@ -23,7 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <App />
         <Toaster />
-        <SonnerToaster position="bottom-right" />
+        <SonnerToaster position="bottom-right" mobileOffset={{ bottom: '5.25rem' }} />
       </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>

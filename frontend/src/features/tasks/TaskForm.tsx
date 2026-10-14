@@ -10,10 +10,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Calendar } from 'lucide-react'
+import { Calendar, Clock } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
-import { cn } from '@/lib/utils'
 import { useTasks } from '@/hooks/useApi'
 import { Task } from '@/types'
 
@@ -129,49 +127,47 @@ export function TaskForm({ initialData, subjects, onClose, onSuccess }: TaskForm
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="deadlineAt">Deadline *</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn('w-full justify-start text-left font-normal', errors.deadlineAt && 'border-destructive')}
-              type="button"
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              {watch('deadlineAt') ? format(parseISO(watch('deadlineAt')), 'dd MMM yyyy, HH:mm') : 'Pilih tanggal dan waktu'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <div className="p-4 space-y-4 w-[280px]">
-              <div>
-                <Label htmlFor="deadlineDate">Tanggal</Label>
-                <Input
-                  id="deadlineDate"
-                  type="date"
-                  onChange={e => {
-                    const time = watch('deadlineAt') ? parseISO(watch('deadlineAt')).toTimeString().slice(0, 5) : '23:59'
-                    setValue('deadlineAt', `${e.target.value}T${time}`)
-                  }}
-                  defaultValue={watch('deadlineAt') ? format(parseISO(watch('deadlineAt')), 'yyyy-MM-dd') : ''}
-                />
-              </div>
-              <div>
-                <Label htmlFor="deadlineTime">Waktu</Label>
-                <Input
-                  id="deadlineTime"
-                  type="time"
-                  onChange={e => {
-                    const date = watch('deadlineAt') ? format(parseISO(watch('deadlineAt')), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
-                    setValue('deadlineAt', `${date}T${e.target.value}`)
-                  }}
-                  defaultValue={watch('deadlineAt') ? format(parseISO(watch('deadlineAt')), 'HH:mm') : '23:59'}
-                />
-              </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Tenggat Waktu (Deadline) *</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="space-y-1">
+            <span className="text-[11px] text-muted-foreground font-medium">Tanggal</span>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="date"
+                className="pl-9 rounded-xl text-xs sm:text-sm"
+                value={watch('deadlineAt') ? format(parseISO(watch('deadlineAt')), 'yyyy-MM-dd') : ''}
+                onChange={e => {
+                  const val = e.target.value
+                  if (!val) return
+                  const time = watch('deadlineAt') ? format(parseISO(watch('deadlineAt')), 'HH:mm') : '23:59'
+                  setValue('deadlineAt', `${val}T${time}`)
+                }}
+              />
             </div>
-          </PopoverContent>
-        </Popover>
-        {errors.deadlineAt && <p className="text-sm text-destructive">{errors.deadlineAt.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[11px] text-muted-foreground font-medium">Jam (Format 24 Jam)</span>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="time"
+                step="60"
+                className="pl-9 rounded-xl text-xs sm:text-sm font-mono"
+                value={watch('deadlineAt') ? format(parseISO(watch('deadlineAt')), 'HH:mm') : '23:59'}
+                onChange={e => {
+                  const val = e.target.value
+                  if (!val) return
+                  const date = watch('deadlineAt') ? format(parseISO(watch('deadlineAt')), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+                  setValue('deadlineAt', `${date}T${val}`)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+        {errors.deadlineAt && <p className="text-xs text-destructive">{errors.deadlineAt.message}</p>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

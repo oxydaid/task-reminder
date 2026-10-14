@@ -47,7 +47,7 @@ export async function register(req: Request, res: Response): Promise<void> {
   res.status(201).json({
     success: true,
     data: {
-      user: { id: user.id, whatsappNumber: user.whatsapp_number },
+      user: { id: user.id, whatsappNumber: user.whatsapp_number, whatsapp_number: user.whatsapp_number },
       verificationCode: config.nodeEnv === 'development' ? code : undefined
     }
   })
@@ -178,6 +178,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       user: {
         id: user.id,
         whatsappNumber: user.whatsapp_number,
+        whatsapp_number: user.whatsapp_number,
         role: user.role,
         timezone: user.timezone,
         reminderEnabled: user.reminder_enabled === 1,
@@ -211,6 +212,7 @@ export async function me(req: Request, res: Response): Promise<void> {
       user: {
         id: user.id,
         whatsappNumber: user.whatsapp_number,
+        whatsapp_number: user.whatsapp_number,
         role: user.role,
         timezone: user.timezone,
         reminderEnabled: user.reminder_enabled === 1,

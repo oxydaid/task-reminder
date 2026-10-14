@@ -16,7 +16,13 @@ export async function listTasks(req: Request, res: Response): Promise<void> {
   
   res.json({
     success: true,
-    data: tasks,
+    data: {
+      tasks,
+      total,
+      page: parseResult.data.page,
+      limit: parseResult.data.limit,
+      totalPages: Math.ceil(total / parseResult.data.limit)
+    },
     meta: {
       total,
       page: parseResult.data.page,

@@ -75,3 +75,10 @@ html, body {
     scrollbar-width: none;
   }
 }
+
+/* Ensure mobile toasts appear cleanly above the sticky bottom navigation bar */
+@media (max-width: 640px) {
+  [data-sonner-toaster] {
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}

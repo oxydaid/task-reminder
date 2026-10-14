@@ -1,18 +1,27 @@
 import 'dotenv/config'
-import { resolve } from 'path'
+import { resolve, dirname } from 'path'
+import { mkdirSync, accessSync, constants } from 'fs'
 
 function getSafePath(envPath?: string, defaultRelative: string = './data/task-reminder.sqlite'): string {
-  if (!envPath) return resolve(process.cwd(), defaultRelative)
-  // If set to container root path like /app/data but running outside container without write permissions
-  if (envPath.startsWith('/app/data')) {
+  const fallback = resolve(process.cwd(), defaultRelative)
+  if (!envPath) return fallback
+
+  try {
+    const targetDir = envPath.endsWith('.sqlite') || envPath.endsWith('.db')
+      ? dirname(envPath)
+      : envPath
+    mkdirSync(targetDir, { recursive: true })
+    accessSync(targetDir, constants.W_OK)
+    return envPath
+  } catch {
     try {
-      // Test if /app/data or root is writable
-      return envPath
-    } catch {
-      return resolve(process.cwd(), defaultRelative)
-    }
+      const fallbackDir = fallback.endsWith('.sqlite') || fallback.endsWith('.db')
+        ? dirname(fallback)
+        : fallback
+      mkdirSync(fallbackDir, { recursive: true })
+    } catch {}
+    return fallback
   }
-  return envPath
 }
 
 export const config = {

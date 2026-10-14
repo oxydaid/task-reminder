@@ -294,7 +294,7 @@ export function Settings() {
                   <div className="relative flex-1">
                     <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      value={user?.whatsapp_number || ''}
+                      value={user?.whatsapp_number || (user as any)?.whatsappNumber ? formatPhoneNumber(user?.whatsapp_number || (user as any)?.whatsappNumber) : ''}
                       disabled
                       className="pl-9 rounded-xl bg-muted/40 font-mono text-xs sm:text-sm"
                     />

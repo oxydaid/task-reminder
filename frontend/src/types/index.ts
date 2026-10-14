@@ -1,11 +1,15 @@
 export interface User {
   id: number
-  whatsapp_number: string
+  whatsapp_number?: string
+  whatsappNumber?: string
   role: 'user' | 'admin'
   timezone: string
-  reminder_enabled: boolean
-  default_reminder_offset_minutes: number
-  whatsapp_verified_at: string | null
+  reminder_enabled?: boolean
+  reminderEnabled?: boolean
+  default_reminder_offset_minutes?: number
+  defaultReminderOffsetMinutes?: number
+  whatsapp_verified_at?: string | null
+  whatsappVerifiedAt?: string | null
 }
 
 export interface Subject {

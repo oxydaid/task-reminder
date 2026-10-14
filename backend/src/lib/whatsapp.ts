@@ -9,7 +9,7 @@ import makeWASocket, {
 import QRCode from 'qrcode'
 import pino from 'pino'
 import { existsSync, mkdirSync, rmSync } from 'fs'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { config } from '../config'
 import { logger } from './logger'
 import { normalizePhoneNumber } from './auth'
@@ -95,9 +95,21 @@ export async function initializeWhatsApp(forceNew = false): Promise<void> {
   }
 
   try {
-    // 1. Ensure auth storage directory exists
-    if (!existsSync(config.whatsappAuthDir)) {
-      mkdirSync(config.whatsappAuthDir, { recursive: true })
+    // 1. Ensure auth storage directory exists with safe permission fallback
+    try {
+      if (!existsSync(config.whatsappAuthDir)) {
+        mkdirSync(config.whatsappAuthDir, { recursive: true })
+      }
+    } catch (err: any) {
+      if (err.code === 'EACCES') {
+        logger.warn({ dir: config.whatsappAuthDir }, 'Permission denied on whatsappAuthDir, falling back to local ./data/whatsapp-auth')
+        config.whatsappAuthDir = resolve(process.cwd(), './data/whatsapp-auth')
+        if (!existsSync(config.whatsappAuthDir)) {
+          mkdirSync(config.whatsappAuthDir, { recursive: true })
+        }
+      } else {
+        throw err
+      }
     }
 
     // 2. Load auth state with caching to prevent I/O bottlenecks

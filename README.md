@@ -1,316 +1,157 @@
-# Task Reminder
+# ✨ Task Reminder — Asisten Pintar & Pengingat Tugas Kuliah 🎓📱
 
-Aplikasi web untuk pengelolaan tugas kuliah dengan notifikasi WhatsApp otomatis. Dibangun dengan React + TypeScript (frontend) dan Node.js + TypeScript (backend), siap deploy ke Pterodactyl Panel.
+> *"Selamat tinggal tugas yang terlewat! Biarkan bot WhatsApp yang mengingatkan deadline, kamu fokus berkarya dan meraih nilai terbaik."* 🚀
 
-## 🚀 Fitur Utama
+---
 
-- **Manajemen Tugas**: CRUD tugas dengan deadline, prioritas, dan status
-- **Mata Kuliah**: Kelola mata kuliah dengan kode, dosen, dan warna
-- **Dashboard**: Ringkasan tugas, terlambat, mendekati deadline
-- **Notifikasi WhatsApp**: Pengingat otomatis via WhatsApp (Baileys)
-- **PWA**: Installable sebagai aplikasi mobile
-- **Multi-user**: Isolasi data per pengguna
-- **Admin Panel**: Monitoring WhatsApp, scheduler, notifikasi
+## 🌟 Apa itu Task Reminder?
 
-## 🛠 Tech Stack
+**Task Reminder** adalah aplikasi web modern yang dirancang khusus untuk mahasiswa dan pelajar agar jadwal tugas kuliah, laporan praktikum, maupun proyek kelompok tidak pernah terlewatkan lagi. 
 
-### Frontend
-- React 18 + TypeScript
-- Vite 5
-- Tailwind CSS v4
-- shadcn/ui (Radix UI)
-- TanStack Query v5
-- React Router v6
-- React Hook Form + Zod
-- date-fns + date-fns-tz
+Bukan sekadar buku catatan tugas biasa, **Task Reminder terhubung langsung dengan WhatsApp Anda!** Bot pintar kami akan mengirimkan pesan pengingat otomatis ke WhatsApp pribadi Anda sebelum batas waktu pengumpulan tiba.
 
-### Backend
-- Node.js 20 + TypeScript
-- Native HTTP server (no Express)
-- Better-SQLite3
-- Baileys (WhatsApp Web API)
-- node-cron (scheduler)
-- Argon2id/Bcrypt (password hashing)
-- Cookie-based sessions
+---
 
-### Deployment
-- Docker multi-stage build
-- Pterodactyl Panel ready
-- SQLite dengan WAL mode
-- Persistent volumes untuk data & WhatsApp session
+## 🎯 Fitur-Fitur Unggulan
 
-## 📦 Quick Start (Development)
+### 🔔 1. Notifikasi Pengingat WhatsApp Otomatis
+* **Pesan Ramah & Detail:** Bot akan mengirimkan pesan WhatsApp yang rapi dan sopan, lengkap dengan nama mata kuliah, judul tugas, tenggat waktu, dan sisa waktu yang tersisa.
+* **Jadwal Fleksibel:** Anda bebas memilih kapan ingin diingatkan — mulai dari 30 menit, 1 jam, 6 jam, 1 hari (H-1), hingga 2 hari (H-2) sebelum deadline.
 
-```bash
-# Clone repository
-git clone https://github.com/oxydaid/task-reminder.git
-cd task-reminder
+### 📋 2. Pencatatan Tugas yang Rapi & Jelas
+* **Format Waktu 24 Jam (WIB):** Tampilan waktu yang tegas dan anti-bingung (misalnya `14:30 WIB` atau `23:59 WIB`).
+* **Tingkat Prioritas Tugas:** Tandai tugas dengan label warna cerah:
+  - 🔴 **Tinggi:** Untuk tugas penting, proyek akhir, atau ujian.
+  - 🟡 **Sedang:** Untuk tugas mingguan atau kuis rutin.
+  - 🟢 **Rendah:** Untuk tugas santai atau bacaan mandiri.
+* **Filter & Pencarian Instan:** Temukan tugas yang belum selesai, tugas yang sudah beres, atau cari berdasarkan mata kuliah tertentu hanya dengan satu klik.
 
-# Install dependencies
-pnpm install
+### 📚 3. Pengelompokan Mata Kuliah Berwarna
+* Kelompokkan setiap tugas berdasarkan mata kuliahnya.
+* Pilih warna favorit untuk setiap mata kuliah agar jadwal terlihat estetik dan enak dipandang.
+* Catat nama dosen pengampu dan kode ruangan agar tidak perlu membuka jadwal terpisah.
 
-# Setup database
-pnpm db:migrate
-pnpm db:seed  # Optional: creates admin/user test accounts
+### 📊 4. Dashboard Ringkasan yang Cerdas
+* Dapatkan gambaran cepat hari ini: berapa tugas yang aktif, berapa yang mendekati deadline, dan tugas mana yang butuh perhatian segera.
+* Menampilkan waktu relatif yang mudah dipahami (seperti *"2 hari lagi"*, *"6 jam lagi"*, atau *"Terlewat"*).
 
-# Start development servers
-pnpm dev
-```
+### 🌓 5. Mode Tampilan: Terang, Gelap, & Otomatis
+* **Mode Terang (Light):** Tampilan putih cerah, bersih, dan segar untuk penggunaan di siang hari.
+* **Mode Gelap (Dark):** Nuansa hitam elegan yang lembut dan nyaman di mata saat Anda begadang mengerjakan tugas.
+* **Ikuti Sistem (Auto):** Otomatis menyesuaikan dengan pengaturan tema di Windows, Android, atau iPhone Anda.
 
-Akses:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3000
+### 📱 6. Ramah Pengguna di Smartphone (Bisa Dijadikan Aplikasi HP)
+* Desain modern dengan menu navigasi bawah (*bottom bar*) seperti aplikasi Android/iOS asli.
+* Notifikasi melayang rapi di atas menu tanpa menutupi tombol penting.
+* Dapat ditambahkan langsung ke layar utama HP (*Add to Home Screen*) tanpa perlu mengunduh file berat dari toko aplikasi.
 
-### Test Accounts (after seed)
-- Admin: `6281234567890` / `admin123`
-- User: `6281234567891` / `user123`
+### 🤖 7. Khusus Admin: Sambungkan Bot WhatsApp Tanpa Ribet
+* **Scan QR Code:** Seperti menggunakan WhatsApp Web, cukup pindai kode QR langsung dari aplikasi WhatsApp di HP Anda.
+* **Fitur Uji Coba Pengingat (Scheduler Test):** Admin dapat mengirim pesan simulasi tugas ke nomor manapun untuk memastikan koneksi dan pengingat bekerja sempurna.
 
-## 🐳 Docker Deployment
+---
 
-### Build Image
-```bash
-docker build -t task-reminder .
-```
+## 📖 Panduan Praktis & Tata Cara Pemakaian
 
-### Run with Docker Compose
-```bash
-# Copy env file
-cp .env.example .env
-# Edit .env with your values
+### 1️⃣ Memulai Akun Baru
+1. Buka tautan website **Task Reminder** di peramban (Chrome, Safari, Edge, dll).
+2. Klik tombol **Daftar Akun Baru**.
+3. Masukkan nomor WhatsApp aktif Anda (contoh: `081234567890`) dan buat kata sandi yang aman.
+4. Masukkan kode verifikasi yang diberikan untuk mengaktifkan nomor Anda.
+5. Selesai! Anda siap mengatur jadwal kuliah.
 
-docker-compose up -d
-```
+---
 
-### Environment Variables
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NODE_ENV` | `production` or `development` | Yes |
-| `PORT` | Server port (default: 3000) | Yes |
-| `DATABASE_PATH` | Path to SQLite file (persistent volume) | Yes |
-| `SESSION_SECRET` | **Secure random string (min 32 chars)** | Yes |
-| `APP_BASE_URL` | Full URL including protocol | Yes |
-| `APP_TIMEZONE` | Default timezone (e.g., Asia/Jakarta) | Yes |
-| `WHATSAPP_AUTH_DIR` | WhatsApp session directory (persistent) | Yes |
-| `CORS_ORIGIN` | Frontend origin for CORS | Yes |
-| `SCHEDULER_INTERVAL` | Cron expression for notifications | No (default: every minute) |
+### 2️⃣ Membuat Mata Kuliah Pertama Anda
+Agar tugas tersusun rapi, buatlah mata kuliah terlebih dahulu:
+1. Buka menu **Mata Kuliah** di bilah navigasi.
+2. Klik tombol **+ Tambah Mata Kuliah**.
+3. Isi informasi mata kuliah:
+   - **Nama Mata Kuliah:** (Contoh: *Algoritma & Pemrograman*)
+   - **Kode Mata Kuliah (Opsional):** (Contoh: *TI-201*)
+   - **Dosen Pengampu (Opsional):** (Contoh: *Bpk. Budi Raharjo*)
+   - **Pilihan Warna:** Pilih palet warna yang paling cocok.
+4. Klik **Simpan**.
 
-## 🎮 Pterodactyl Panel Deployment
+---
 
-### 1. Create Egg
-Import `pterodactyl-egg.json` ke Pterodactyl Panel:
-- Panel Admin → Nests → Create Nest → Import Egg
-- Atau buat manual menggunakan konfigurasi di `pterodactyl-egg.json`
+### 3️⃣ Menambahkan Tugas Baru
+1. Masuk ke menu **Tugas** atau klik tombol **+ Tugas Baru** di Dashboard.
+2. Isi rincian tugas Anda:
+   - **Judul Tugas:** (Contoh: *Laporan Praktikum Modul 3*)
+   - **Mata Kuliah:** Pilih mata kuliah terkait dari daftar.
+   - **Tenggat Waktu (Deadline):** Pilih tanggal dan jam (menggunakan format 24 jam, misalnya `23:59`).
+   - **Prioritas:** Tentukan apakah *Tinggi*, *Sedang*, atau *Rendah*.
+   - **Deskripsi (Opsional):** Tambahkan catatan penting, instruksi dosen, atau tautan pengumpulan file.
+3. Klik **Simpan Tugas**. Tugas Anda langsung tercatat dan siap dipantau!
 
-### 2. Setup Server
-1. Buat server baru menggunakan egg "Task Reminder"
-2. Konfigurasi variabel environment:
-   - `SESSION_SECRET`: Generate secure random string (32+ chars)
-   - `APP_BASE_URL`: Domain/server URL dengan HTTPS
-   - `CORS_ORIGIN`: Sama dengan APP_BASE_URL
-   - `DATABASE_PATH`: `/app/data/task-reminder.sqlite`
-   - `WHATSAPP_AUTH_DIR`: `/app/data/whatsapp-auth`
-3. Pastikan mount `/app/data` ke volume persisten (min 1GB)
+---
 
-### 3. First Run & WhatsApp Pairing
-1. Start server
-2. Akses admin panel: `https://your-domain.com` → login admin → `/admin`
-3. Buka tab "WhatsApp Status"
-4. Masukkan nomor WhatsApp bot → Generate Pairing Code
-5. Di HP bot: WhatsApp → Linked Devices → Link a Device → Masukkan pairing code
-6. Tunggu hingga status "Connected"
+### 4️⃣ Mengatur Waktu Notifikasi WhatsApp
+Secara bawaan, pengingat WhatsApp akan aktif otomatis. Jika Anda ingin mengubah jadwal pengingat:
+1. Klik menu **Pengaturan** (ikon gerigi).
+2. Pilih tab **Pengingat WA**.
+3. Pastikan tombol *Kirim Notifikasi WhatsApp* dalam posisi aktif.
+4. Pilih **Waktu Pengingat Default** sesuai keinginan Anda (misalnya *1 hari sebelum deadline* atau *2 hari sebelum deadline*).
+5. Klik **Simpan Pengaturan**.
 
-### 4. SSL/HTTPS (Required for Production)
-- Pterodactyl通常使用nginx反向代理
-- Pastikan HTTPS dikonfigurasi dengan benar
-- `SESSION_SECRET` dan cookie `Secure` flag memerlukan HTTPS
+---
 
-## 📁 Project Structure
+### 5️⃣ Menyelesaikan & Menghapus Tugas
+* **Tandai Tugas Selesai:** Saat tugas sudah Anda kumpulkan ke dosen, cukup klik lingkaran centang di sebelah judul tugas. Statusnya otomatis berpindah ke **Selesai** dan bot tidak akan mengirimkan pengingat lagi.
+* **Mengedit Tugas:** Klik ikon pensil untuk mengubah deadline atau keterangan tugas.
+* **Menghapus Tugas:** Klik ikon tempat sampah jika tugas tersebut dibatalkan.
 
-```
-task-reminder/
-├── backend/
-│   ├── src/
-│   │   ├── config/          # Configuration
-│   │   ├── db/              # Database & migrations
-│   │   │   ├── repositories/ # Data access layer
-│   │   ├── http.ts          # HTTP helpers
-│   │   ├── router.ts        # Routing
-│   │   ├── lib/             # Utilities (auth, validation, whatsapp, logger)
-│   │   ├── modules/         # Feature modules
-│   │   │   ├── auth/
-│   │   │   ├── subjects/
-│   │   │   ├── tasks/
-│   │   │   ├── dashboard/
-│   │   │   ├── settings/
-│   │   │   ├── notifications/
-│   │   │   ├── admin/
-│   │   │   └── scheduler/
-│   │   └── index.ts         # Entry point
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ui/          # shadcn/ui components
-│   │   │   └── layout.tsx
-│   │   ├── features/
-│   │   │   ├── auth/
-│   │   │   ├── dashboard/
-│   │   │   ├── tasks/
-│   │   │   ├── subjects/
-│   │   │   ├── settings/
-│   │   │   └── notifications/
-│   │   ├── hooks/
-│   │   ├── lib/
-│   │   ├── routes/
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── public/
-│   │   ├── icons/
-│   │   └── manifest.webmanifest
-│   └── package.json
-├── Dockerfile
-├── docker-compose.yml
-├── entrypoint.sh
-├── pterodactyl-egg.json
-├── .env.example
-└── package.json (workspace root)
-```
+---
 
-## 🔐 Security Features
+### 6️⃣ Mengganti Tema (Terang / Gelap)
+Anda bisa mengganti tema kapan saja melalui 2 cara mudah:
+* **Cara Cepat:** Klik ikon **Matahari ☀️ / Bulan 🌙** di pojok kanan atas layar (dekat profil).
+* **Melalui Pengaturan:** Buka **Pengaturan** → pilih tab **Tema Tampilan** → pilih *Mode Terang*, *Mode Gelap*, atau *Ikuti Sistem*.
 
-- Password hashing dengan Bcrypt (12 rounds)
-- HttpOnly, Secure, SameSite cookies
-- Session regeneration after login
-- Rate limiting pada auth endpoints
-- Input validation dengan Zod (client & server)
-- Prepared statements (SQL injection prevention)
-- CORS restriction
-- Security headers (CSP, HSTS, etc.)
-- Redacted logging (no passwords, tokens, PII)
+---
 
-## 📱 PWA Support
+### 7️⃣ Khusus Admin: Menghubungkan Bot & Uji Coba Pengingat
+Jika Anda bertindak sebagai pengelola sistem:
+1. Buka menu **Pengaturan** lalu klik tab **Bot WA & Tes Notifikasi**.
+2. Klik tombol **Generate QR Code**.
+3. Buka WhatsApp di smartphone yang ingin dijadikan nomor bot:
+   - Tekan menu **Titik Tiga** (Android) atau **Pengaturan** (iPhone).
+   - Pilih **Perangkat Tertaut (Linked Devices)** → **Tautkan Perangkat**.
+   - Arahkan kamera HP ke kode QR di layar laptop/komputer.
+4. Status akan langsung berubah menjadi hijau **Terhubung**.
+5. **Coba Kirim Notifikasi Tes:**
+   - Di bagian bawah, masukkan nomor WhatsApp tujuan pada kolom *Nomor WhatsApp Penerima*.
+   - Klik **Kirim Pesan Pengingat Tes**.
+   - Periksa pesan masuk di WhatsApp Anda — bot akan mengirimkan contoh pengingat tugas resmi lengkap dengan format 24 jam!
 
-- Web App Manifest
-- Service Worker (via Vite PWA)
-- Offline caching untuk assets
-- Install prompt di mobile
-- Standalone display mode
+---
 
-## 🔧 Admin Features
+## 💡 Tips & Trik Agar Kuliah Makin Tenang
 
-Akses `/admin` setelah login sebagai admin:
-- Statistik pengguna
-- Status koneksi WhatsApp (QR/Pairing code)
-- Status scheduler
-- Antrean notifikasi
-- Notifikasi gagal
-- Pengaturan aplikasi
-- Reconnect WhatsApp
+* 📌 **Pasang di Layar Utama HP:** Buka web ini di Chrome Android atau Safari iPhone, lalu pilih *"Tambahkan ke Layar Utama"* (*Add to Home Screen*). Web akan terbuka seperti aplikasi HP resmi tanpa address bar!
+* 🕒 **Atur Deadline Sedikit Lebih Awal:** Jika dosen meminta pengumpulan jam `23:59`, coba atur di aplikasi jam `21:00` agar Anda punya waktu luang jika ada kendala jaringan atau server kampus penuh.
+* 🎨 **Manfaatkan Warna Mata Kuliah:** Berikan warna merah untuk mata kuliah yang paling menantang, dan warna biru/hijau untuk mata kuliah santai agar prioritas terlihat seketika.
 
-## 📝 API Endpoints
+---
 
-### Auth
-- `POST /api/auth/register` - Registrasi
-- `POST /api/auth/login` - Login
-- `POST /api/auth/logout` - Logout
-- `GET /api/auth/me` - Current user
-- `POST /api/auth/verify-whatsapp` - Request verification
-- `POST /api/auth/confirm-whatsapp` - Verify code
-- `POST /api/auth/change-password` - Change password
+## ❓ Pertanyaan yang Sering Diajukan (FAQ)
 
-### Subjects
-- `GET /api/subjects` - List
-- `POST /api/subjects` - Create
-- `GET /api/subjects/:id` - Get
-- `PATCH /api/subjects/:id` - Update
-- `DELETE /api/subjects/:id` - Delete
+**Q: Apakah saya harus menginstall aplikasi lewat Google Play Store atau App Store?**  
+*A: Tidak perlu! Task Reminder berbasis web modern (PWA). Cukup buka lewat peramban favorit Anda di HP maupun laptop.*
 
-### Tasks
-- `GET /api/tasks` - List (with filters)
-- `POST /api/tasks` - Create
-- `GET /api/tasks/:id` - Get
-- `PATCH /api/tasks/:id` - Update
-- `DELETE /api/tasks/:id` - Delete
-- `PATCH /api/tasks/:id/complete` - Toggle complete
+**Q: Mengapa jam pengumpulan menggunakan format 24 jam?**  
+*A: Format 24 jam (seperti `14:30 WIB` dan `23:59 WIB`) dipilih agar tidak terjadi kesalahpahaman antara jam 2 siang dengan jam 2 malam.*
 
-### Dashboard
-- `GET /api/dashboard/summary` - Stats
-- `GET /api/dashboard/upcoming` - Upcoming tasks
-- `GET /api/dashboard/overdue` - Overdue tasks
-- `GET /api/dashboard/due-soon` - Due soon tasks
+**Q: Apakah nomor WhatsApp saya aman?**  
+*A: Sangat aman. Nomor telepon Anda hanya digunakan oleh sistem untuk mengirimkan notifikasi pengingat tugas pribadi Anda.*
 
-### Settings
-- `GET /api/settings` - Get settings
-- `PATCH /api/settings` - Update settings
+**Q: Bagaimana jika tugas sudah saya selesaikan lebih awal?**  
+*A: Cukup centang tugas tersebut menjadi "Selesai". Sistem otomatis membatalkan seluruh jadwal pengingat untuk tugas tersebut sehingga Anda tidak akan terganggu.*
 
-### Notifications
-- `GET /api/notifications` - History
-- `GET /api/notifications/:id` - Detail
+---
 
-### Admin (require admin role)
-- `GET /api/admin/stats` - System stats
-- `GET /api/admin/whatsapp/status` - WhatsApp status
-- `POST /api/admin/whatsapp/pairing-code` - Generate pairing code
-- `POST /api/admin/whatsapp/reconnect` - Reconnect WhatsApp
-- `GET /api/admin/notifications/queue` - Notification queue
-- `GET /api/admin/notifications/failed` - Failed notifications
-- `GET /api/admin/settings` - App settings
-- `PATCH /api/admin/settings` - Update app setting
-
-## 🔄 WhatsApp Notifications
-
-### How it works
-1. Scheduler runs every minute (configurable)
-2. Checks tasks with upcoming deadlines
-3. Calculates reminder time based on user/task settings
-4. Creates notification records (anti-duplicate)
-5. Queue processor sends via Baileys
-6. Retry with exponential backoff on failure
-
-### Configuration
-- **Global** (per user): Enabled, default offset (default: H-2)
-- **Per task**: Override enabled, custom offset
-- **Timezone**: Per user (default: Asia/Jakarta)
-
-### Message Format
-```
-Halo kak! 👋
-
-Jangan lupa, ada tugas yang sebentar lagi deadline.
-
-📚 Mata kuliah: Pemrograman Web
-📝 Tugas: Membuat halaman login
-⏰ Deadline: 16 Oktober 2026, 23.59
-📌 Sisa waktu: 2 hari
-
-Semangat mengerjakan tugasnya! 💪
-```
-
-## 🛡 Production Checklist
-
-- [ ] Generate strong `SESSION_SECRET` (32+ random chars)
-- [ ] Set `NODE_ENV=production`
-- [ ] Configure HTTPS/SSL
-- [ ] Set correct `APP_BASE_URL` dan `CORS_ORIGIN`
-- [ ] Mount persistent volume di `/app/data`
-- [ ] Pair WhatsApp bot account
-- [ ] Test notification delivery
-- [ ] Configure backup untuk database
-- [ ] Setup monitoring/logging
-- [ ] Rate limiting di reverse proxy
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
-## 🤝 Contributing
-
-1. Fork repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Open Pull Request
-
-## 📞 Support
-
-Untuk pertanyaan atau issue, buka GitHub Issues di repository ini.
+<p align="center">
+  Dibuat dengan segenap cinta untuk mendukung semangat belajar mahasiswa Indonesia! 🇮🇩❤️<br>
+  <strong>Kelola Tugas Lebih Rapi, Raih Prestasi Lebih Tinggi.</strong>
+</p>

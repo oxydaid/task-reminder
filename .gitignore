@@ -18,6 +18,9 @@ build
 *.sqlite
 *.sqlite3
 *.db
+*.sqlite-shm
+*.sqlite-wal
+data/
 
 # WhatsApp session data
 whatsapp-auth

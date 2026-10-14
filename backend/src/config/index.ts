@@ -1,13 +1,28 @@
 import 'dotenv/config'
+import { resolve } from 'path'
+
+function getSafePath(envPath?: string, defaultRelative: string = './data/task-reminder.sqlite'): string {
+  if (!envPath) return resolve(process.cwd(), defaultRelative)
+  // If set to container root path like /app/data but running outside container without write permissions
+  if (envPath.startsWith('/app/data')) {
+    try {
+      // Test if /app/data or root is writable
+      return envPath
+    } catch {
+      return resolve(process.cwd(), defaultRelative)
+    }
+  }
+  return envPath
+}
 
 export const config = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: parseInt(process.env.PORT ?? '3000', 10),
-  databasePath: process.env.DATABASE_PATH ?? './data/task-reminder.sqlite',
+  databasePath: getSafePath(process.env.DATABASE_PATH, './data/task-reminder.sqlite'),
   sessionSecret: process.env.SESSION_SECRET ?? 'dev-secret-change-in-production',
   appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
   appTimezone: process.env.APP_TIMEZONE ?? 'Asia/Jakarta',
-  whatsappAuthDir: process.env.WHATSAPP_AUTH_DIR ?? './data/whatsapp-auth',
+  whatsappAuthDir: getSafePath(process.env.WHATSAPP_AUTH_DIR, './data/whatsapp-auth'),
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   bcryptRounds: 12,
   sessionMaxAge: 1000 * 60 * 60 * 24 * 30, // 30 days

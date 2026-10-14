@@ -2,11 +2,25 @@
 const { DatabaseSync } = (process as any)['getBuiltinModule'] ? (process as any)['getBuiltinModule']('node:sqlite') : require('node:sqlite')
 import { config } from '../config'
 import { mkdirSync } from 'fs'
-import { dirname } from 'path'
+import { dirname, resolve } from 'path'
 
-mkdirSync(dirname(config.databasePath), { recursive: true })
+function ensureDbDirectory(dbPath: string): string {
+  try {
+    mkdirSync(dirname(dbPath), { recursive: true })
+    return dbPath
+  } catch (err: any) {
+    if (err.code === 'EACCES') {
+      const fallbackPath = resolve(process.cwd(), './data/task-reminder.sqlite')
+      mkdirSync(dirname(fallbackPath), { recursive: true })
+      return fallbackPath
+    }
+    throw err
+  }
+}
 
-export const db = new DatabaseSync(config.databasePath)
+const activeDbPath = ensureDbDirectory(config.databasePath)
+
+export const db = new DatabaseSync(activeDbPath)
 
 db.exec('PRAGMA foreign_keys = ON;')
 db.exec('PRAGMA journal_mode = WAL;')

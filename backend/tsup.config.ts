@@ -9,7 +9,7 @@ export default defineConfig({
   dts: false,
   shims: true,
   esbuildOptions(options) {
-    options.external = ['node:sqlite', 'sqlite', ...(options.external || [])]
+    options.external = ['node:sqlite', 'sqlite', '@whiskeysockets/baileys', ...(options.external || [])]
   },
   banner: {
     js: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);`

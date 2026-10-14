@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
     "cookie": "^1.0.1",
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",

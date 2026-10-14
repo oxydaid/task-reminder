@@ -23,13 +23,14 @@ import {
   Bot,
   QrCode,
   CheckCircle2,
-  Copy,
   RefreshCw,
-  Clock
+  Clock,
+  PowerOff
 } from 'lucide-react'
 import { useAuth, useSettings } from '@/hooks/useApi'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
+import { formatPhoneNumber } from '@/lib/utils'
 
 const settingsSchema = z.object({
   timezone: z.string().min(1),
@@ -79,9 +80,9 @@ export function Settings() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // WhatsApp Admin Bot state
-  const [botPhone, setBotPhone] = useState('')
-  const [pairingCode, setPairingCode] = useState<string | null>(null)
+  const [qrCode, setQrCode] = useState<string | null>(null)
   const [botStatus, setBotStatus] = useState<string>('disconnected')
+  const [botNumber, setBotNumber] = useState<string | null>(null)
   const [isBotLoading, setIsBotLoading] = useState(false)
 
   const {
@@ -106,54 +107,70 @@ export function Settings() {
     resolver: zodResolver(changePasswordSchema)
   })
 
-  // Fetch bot status if admin
+  // Poll WhatsApp status while on bot tab
   useEffect(() => {
-    if (user?.role === 'admin') {
+    if (user?.role !== 'admin') return
+
+    const fetchStatus = () => {
       api.admin.getWhatsAppStatus()
         .then(res => {
           setBotStatus(res.status)
-          if (res.pairingCode) setPairingCode(res.pairingCode)
+          setQrCode(res.qrCode)
+          setBotNumber(res.botNumber)
         })
         .catch(() => {})
     }
-  }, [user?.role])
 
-  const handleGeneratePairingCode = async () => {
-    if (!botPhone.trim()) {
-      toast.error('Masukkan nomor telepon WhatsApp bot terlebih dahulu')
+    fetchStatus()
+
+    let interval: ReturnType<typeof setInterval> | null = null
+    if (activeTab === 'bot') {
+      interval = setInterval(fetchStatus, 3000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [user?.role, activeTab])
+
+  const handleRefreshQR = async () => {
+    setIsBotLoading(true)
+    try {
+      await api.admin.reconnectWhatsApp()
+      toast.success('Memuat ulang QR Code WhatsApp...')
+      const res = await api.admin.getWhatsAppStatus()
+      setBotStatus(res.status)
+      setQrCode(res.qrCode)
+      setBotNumber(res.botNumber)
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal memuat ulang QR Code')
+    } finally {
+      setIsBotLoading(false)
+    }
+  }
+
+  const handleDisconnectBot = async () => {
+    if (!confirm('Yakin ingin memutuskan koneksi WhatsApp bot ini? Anda perlu memindai QR Code lagi untuk menghubungkannya kembali.')) {
       return
     }
 
     setIsBotLoading(true)
     try {
-      const res = await api.admin.generatePairingCode(botPhone)
-      setPairingCode(res.pairingCode)
-      toast.success('Kode pairing berhasil dibuat')
+      await api.admin.disconnectWhatsApp()
+      toast.success('Sesi WhatsApp berhasil diputuskan')
+      setBotStatus('disconnected')
+      setQrCode(null)
+      setBotNumber(null)
+      setTimeout(async () => {
+        const res = await api.admin.getWhatsAppStatus()
+        setBotStatus(res.status)
+        setQrCode(res.qrCode)
+        setBotNumber(res.botNumber)
+      }, 2000)
     } catch (err: any) {
-      toast.error(err?.message || 'Gagal generate pairing code')
+      toast.error(err?.message || 'Gagal memutuskan sesi WhatsApp')
     } finally {
       setIsBotLoading(false)
-    }
-  }
-
-  const handleReconnectBot = async () => {
-    setIsBotLoading(true)
-    try {
-      await api.admin.reconnectWhatsApp()
-      toast.success('Inisialisasi ulang koneksi WhatsApp...')
-      const res = await api.admin.getWhatsAppStatus()
-      setBotStatus(res.status)
-    } catch (err: any) {
-      toast.error(err?.message || 'Gagal reconnect')
-    } finally {
-      setIsBotLoading(false)
-    }
-  }
-
-  const copyPairingCode = () => {
-    if (pairingCode) {
-      navigator.clipboard.writeText(pairingCode)
-      toast.success('Kode disalin ke clipboard')
     }
   }
 
@@ -184,7 +201,7 @@ export function Settings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 max-w-2xl">
+      <div className="space-y-4 max-w-2xl mx-auto">
         <div className="h-7 bg-muted animate-pulse rounded-xl w-1/3" />
         <div className="h-64 bg-card rounded-2xl border border-border/60 animate-pulse" />
       </div>
@@ -195,7 +212,7 @@ export function Settings() {
     { id: 'profile', label: 'Profil', icon: User },
     { id: 'notifications', label: 'Pengingat WA', icon: Bell },
     { id: 'security', label: 'Keamanan', icon: Lock },
-    ...(user?.role === 'admin' ? [{ id: 'bot', label: 'Bot WA Baileys', icon: Bot }] : [])
+    ...(user?.role === 'admin' ? [{ id: 'bot', label: 'Bot WA (Scan QR)', icon: Bot }] : [])
   ]
 
   return (
@@ -445,7 +462,7 @@ export function Settings() {
         </Card>
       )}
 
-      {/* Tab: Bot WhatsApp Admin (Baileys) */}
+      {/* Tab: Bot WhatsApp Admin (Baileys QR Scan) */}
       {activeTab === 'bot' && user?.role === 'admin' && (
         <Card className="rounded-2xl border border-border/70 shadow-xs">
           <CardHeader className="p-4 sm:p-5 pb-3">
@@ -453,9 +470,9 @@ export function Settings() {
               <div>
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <Bot className="h-4 w-4 text-primary" />
-                  Koneksi Bot WhatsApp (Baileys)
+                  Koneksi Bot WhatsApp (Baileys QR)
                 </CardTitle>
-                <CardDescription className="text-xs">Hubungkan nomor bot WhatsApp pengirim notifikasi via Pairing Code</CardDescription>
+                <CardDescription className="text-xs">Pindai QR code dari WhatsApp HP Anda untuk mengaktifkan bot pengirim</CardDescription>
               </div>
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
                 botStatus === 'connected'
@@ -469,67 +486,91 @@ export function Settings() {
           </CardHeader>
 
           <CardContent className="p-4 sm:p-5 pt-0 space-y-4">
-            <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 text-xs text-blue-900 dark:text-blue-200 space-y-1.5">
-              <p className="font-semibold flex items-center gap-1.5">
-                <QrCode className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                Cara Menghubungkan WhatsApp dari Web (Tanpa Terminal):
-              </p>
-              <ol className="list-decimal list-inside space-y-0.5 text-[11px] opacity-90 pl-1">
-                <li>Masukkan nomor WhatsApp bot Anda di bawah, lalu klik <strong>Buat Kode Pairing</strong>.</li>
-                <li>Buka aplikasi WhatsApp di HP bot Anda.</li>
-                <li>Buka <strong>Pengaturan / Titik Tiga &gt; Perangkat Tertaut (Linked Devices)</strong>.</li>
-                <li>Pilih <strong>Tautkan Perangkat</strong> &gt; pilih opsi <strong>Tautkan dengan nomor telepon saja</strong>.</li>
-                <li>Ketik kode 8 digit yang muncul di web ini. Selesai!</li>
-              </ol>
-            </div>
+            {botStatus === 'connected' ? (
+              /* Connected State */
+              <div className="p-5 rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20 text-center space-y-3">
+                <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">WhatsApp Bot Sedang Aktif</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Bot siap mengirimkan notifikasi pengingat tugas kuliah ke WhatsApp pengguna.
+                  </p>
+                  {botNumber && (
+                    <p className="text-xs font-mono font-semibold text-emerald-700 dark:text-emerald-400 mt-2 bg-emerald-100/60 dark:bg-emerald-900/40 inline-block px-3 py-1 rounded-full">
+                      Nomor Bot: {formatPhoneNumber(botNumber)}
+                    </p>
+                  )}
+                </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Nomor WhatsApp Bot</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Contoh: 08123456789 atau 628123456789"
-                  value={botPhone}
-                  onChange={e => setBotPhone(e.target.value)}
-                  className="rounded-xl text-xs sm:text-sm font-mono"
-                />
-                <Button
-                  onClick={handleGeneratePairingCode}
-                  disabled={isBotLoading}
-                  className="rounded-xl text-xs font-semibold shrink-0"
-                >
-                  {isBotLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                  Buat Kode Pairing
-                </Button>
-              </div>
-            </div>
-
-            {pairingCode && (
-              <div className="p-4 rounded-xl border border-primary/40 bg-primary/5 flex flex-col items-center justify-center text-center space-y-2">
-                <span className="text-[11px] font-medium text-muted-foreground">KODE PAIRING WHATSAPP ANDA:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-2xl sm:text-3xl font-extrabold tracking-widest text-primary">
-                    {pairingCode}
-                  </span>
-                  <Button size="icon" variant="outline" onClick={copyPairingCode} className="h-8 w-8 rounded-lg">
-                    <Copy className="h-4 w-4" />
+                <div className="pt-2 flex justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDisconnectBot}
+                    disabled={isBotLoading}
+                    className="rounded-xl text-xs font-semibold text-destructive hover:bg-destructive/10 gap-1.5"
+                  >
+                    <PowerOff className="h-3.5 w-3.5" />
+                    Putuskan Sesi / Ganti Nomor
                   </Button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Masukkan kode di atas pada WhatsApp di HP Bot Anda sekarang.</p>
+              </div>
+            ) : (
+              /* Disconnected / Scanning QR State */
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 text-xs text-blue-900 dark:text-blue-200 space-y-1.5">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <QrCode className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    Cara Menghubungkan WhatsApp via Scan QR:
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] opacity-90 pl-1">
+                    <li>Buka aplikasi WhatsApp di HP nomor yang ingin dijadikan bot.</li>
+                    <li>Buka menu <strong>Titik Tiga (Android)</strong> atau <strong>Pengaturan (iPhone)</strong>.</li>
+                    <li>Pilih <strong>Perangkat Tertaut (Linked Devices)</strong>.</li>
+                    <li>Tekan tombol <strong>Tautkan Perangkat</strong>.</li>
+                    <li>Arahkan kamera HP Anda ke QR Code di bawah ini.</li>
+                  </ol>
+                </div>
+
+                {/* QR Display Container */}
+                <div className="flex flex-col items-center justify-center p-6 rounded-2xl border border-border/80 bg-background/80 text-center space-y-3">
+                  {qrCode ? (
+                    <div className="relative group p-2 rounded-2xl bg-white border border-border shadow-md">
+                      <img
+                        src={qrCode}
+                        alt="WhatsApp QR Code"
+                        className="w-56 h-56 sm:w-64 sm:h-64 object-contain rounded-xl"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-2xl bg-muted/40 border border-dashed border-border/80 flex flex-col items-center justify-center p-4">
+                      <Loader2 className="h-8 w-8 text-primary animate-spin mb-2" />
+                      <p className="text-xs text-muted-foreground font-medium">Menghubungi Baileys...</p>
+                      <p className="text-[11px] text-muted-foreground/80 mt-1">Menyiapkan QR Code baru</p>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">
+                    QR Code diperbarui otomatis. Pindai sebelum kode kedaluwarsa.
+                  </p>
+
+                  <div className="pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefreshQR}
+                      disabled={isBotLoading}
+                      className="rounded-xl text-xs font-semibold gap-1.5"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${isBotLoading ? 'animate-spin' : ''}`} />
+                      Muat Ulang / Refresh QR
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
-
-            <div className="pt-2 flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReconnectBot}
-                disabled={isBotLoading}
-                className="rounded-xl text-xs font-semibold gap-1.5"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${isBotLoading ? 'animate-spin' : ''}`} />
-                Segarkan Status / Reconnect
-              </Button>
-            </div>
           </CardContent>
         </Card>
       )}

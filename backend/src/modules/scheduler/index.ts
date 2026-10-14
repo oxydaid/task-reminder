@@ -86,7 +86,7 @@ async function runSchedulerTick(): Promise<void> {
 }
 
 export async function initializeScheduler(): Promise<void> {
-  await initializeWhatsApp()
+  initializeWhatsApp().catch(err => logger.error({ err }, 'WhatsApp initial start failed'))
   startScheduler()
 }
 

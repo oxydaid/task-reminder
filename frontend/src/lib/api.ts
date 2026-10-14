@@ -106,8 +106,8 @@ export const api = {
   },
   admin: {
     getStats: () => request<{ totalUsers: number; whatsappStatus: string; schedulerEnabled: boolean; lastSchedulerRun: string | null }>('/admin/stats'),
-    getWhatsAppStatus: () => request<{ status: string; qrCode: string | null; pairingCode: string | null }>('/admin/whatsapp/status'),
-    generatePairingCode: (phoneNumber: string) => request<{ pairingCode: string }>('/admin/whatsapp/pairing-code', { method: 'POST', body: JSON.stringify({ phoneNumber }) }),
-    reconnectWhatsApp: () => request<{ message: string }>('/admin/whatsapp/reconnect', { method: 'POST' })
+    getWhatsAppStatus: () => request<{ status: string; qrCode: string | null; botNumber: string | null }>('/admin/whatsapp/status'),
+    reconnectWhatsApp: () => request<{ message: string }>('/admin/whatsapp/reconnect', { method: 'POST' }),
+    disconnectWhatsApp: () => request<{ message: string }>('/admin/whatsapp/disconnect', { method: 'POST' })
   }
 }

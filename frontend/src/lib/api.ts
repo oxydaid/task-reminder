@@ -103,5 +103,11 @@ export const api = {
   notifications: {
     list: (page = 1, limit = 50) => request(`/notifications?page=${page}&limit=${limit}`),
     get: (id: number) => request(`/notifications/${id}`)
+  },
+  admin: {
+    getStats: () => request<{ totalUsers: number; whatsappStatus: string; schedulerEnabled: boolean; lastSchedulerRun: string | null }>('/admin/stats'),
+    getWhatsAppStatus: () => request<{ status: string; qrCode: string | null; pairingCode: string | null }>('/admin/whatsapp/status'),
+    generatePairingCode: (phoneNumber: string) => request<{ pairingCode: string }>('/admin/whatsapp/pairing-code', { method: 'POST', body: JSON.stringify({ phoneNumber }) }),
+    reconnectWhatsApp: () => request<{ message: string }>('/admin/whatsapp/reconnect', { method: 'POST' })
   }
 }

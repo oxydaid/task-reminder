@@ -1,18 +1,32 @@
 'use client'
 
 import { useState } from 'react'
-import { Outlet, Link, NavLink } from 'react-router-dom'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { LogOut, Settings, Bell, Menu, X, ChevronDown, LayoutDashboard, ListTodo, BookOpen } from 'lucide-react'
+import { Outlet, Link, NavLink, useLocation } from 'react-router-dom'
+import { cn, formatPhoneNumber } from '@/lib/utils'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import {
+  LogOut,
+  Settings,
+  Bell,
+  LayoutDashboard,
+  CheckCircle2,
+  BookOpen,
+  CalendarCheck,
+  ChevronDown
+} from 'lucide-react'
 import { useAuth } from '@/hooks/useApi'
-import { formatPhoneNumber } from '@/lib/utils'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Tugas', href: '/tasks', icon: ListTodo },
+  { name: 'Tugas', href: '/tasks', icon: CalendarCheck },
   { name: 'Mata Kuliah', href: '/subjects', icon: BookOpen },
   { name: 'Notifikasi', href: '/notifications', icon: Bell },
   { name: 'Pengaturan', href: '/settings', icon: Settings }
@@ -20,8 +34,8 @@ const navigation = [
 
 export function Layout() {
   const { user, logout } = useAuth()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const location = useLocation()
 
   const handleLogout = async () => {
     await logout()
@@ -29,127 +43,141 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile sidebar */}
-      <aside className={cn('fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transform transition-transform duration-200 lg:hidden', sidebarOpen ? 'translate-x-0' : '-translate-x-full')}>
-        <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center justify-between px-4 border-b">
-            <Link to="/" className="font-semibold text-lg">Task Reminder</Link>
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
-              <X className="h-5 w-5" />
-            </Button>
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background text-foreground flex flex-col font-sans">
+      {/* Top Header */}
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 transition-all">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          {/* Logo / Brand */}
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-base leading-tight tracking-tight text-foreground flex items-center gap-1.5">
+                Task Reminder
+                <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                  WA Bot
+                </span>
+              </span>
+              <span className="text-[11px] text-muted-foreground hidden sm:block">Pengingat Tugas Kuliah</span>
+            </div>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/40">
+            {navigation.map((item) => {
+              const isActive = location.pathname === item.href
+              const Icon = item.icon
+              return (
+                <NavLink
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150',
+                    isActive
+                      ? 'bg-background text-primary shadow-xs font-bold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  )}
+                >
+                  <Icon className={cn('h-4 w-4', isActive ? 'text-primary' : 'text-muted-foreground')} />
+                  <span>{item.name}</span>
+                </NavLink>
+              )
+            })}
+          </nav>
+
+          {/* User Menu */}
+          <div className="flex items-center gap-2">
+            <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2.5 p-1 sm:px-2 sm:py-1 rounded-full hover:bg-muted/80 transition-colors focus:outline-hidden"
+                >
+                  <Avatar className="h-8 w-8 ring-1 ring-border shadow-xs">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                      {user?.whatsapp_number ? user.whatsapp_number.slice(-2) : 'TR'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden sm:flex flex-col text-left">
+                    <span className="text-xs font-semibold leading-tight">{formatPhoneNumber(user?.whatsapp_number || '')}</span>
+                    <span className="text-[10px] text-muted-foreground capitalize">{user?.role === 'admin' ? 'Administrator' : 'Mahasiswa'}</span>
+                  </div>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 mt-1 rounded-xl shadow-lg border border-border/80" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal p-3">
+                  <div className="flex flex-col space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-foreground">{formatPhoneNumber(user?.whatsapp_number || '')}</p>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                        {user?.role === 'admin' ? 'Admin' : 'User'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">{user?.timezone || 'Asia/Jakarta'}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/settings" className="cursor-pointer py-2">
+                    <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <span>Pengaturan Akun</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/notifications" className="cursor-pointer py-2">
+                    <Bell className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <span>Riwayat Notifikasi</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer py-2 text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Keluar</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <nav className="flex-1 space-y-1 p-4">
-            {navigation.map((item) => (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                className={({ isActive }) => cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </NavLink>
-            ))}
-          </nav>
         </div>
-      </aside>
+      </header>
 
-      {/* Overlay for mobile sidebar */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 pb-28 md:pb-12">
+        <Outlet />
+      </main>
 
-      <div className="lg:pl-0">
-        {/* Top header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Toggle menu"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-
-          <div className="flex-1" />
-
-          {/* Desktop navigation */}
-          <nav className="hidden gap-1 lg:flex">
-            {navigation.map((item) => (
-              <NavLink
-                key={item.name}
-                to={item.href}
-                className={({ isActive }) => cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{item.name}</span>
-              </NavLink>
-            ))}
-          </nav>
-
-          {/* User menu */}
-          <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src="" alt={user?.whatsapp_number || ''} />
-                  <AvatarFallback className="text-xs font-medium">
-                    {user?.whatsapp_number?.slice(-2) || '?'}
-                  </AvatarFallback>
-                </Avatar>
-                <ChevronDown className="ml-1 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{formatPhoneNumber(user?.whatsapp_number || '')}</p>
-                  <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? 'Administrator' : 'Pengguna'}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/settings" onClick={() => setUserMenuOpen(false)}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Pengaturan
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/notifications" onClick={() => setUserMenuOpen(false)}>
-                  <Bell className="mr-2 h-4 w-4" />
-                  Notifikasi
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                Keluar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </header>
-
-        {/* Main content */}
-        <main className="p-4 lg:p-6">
-          <Outlet />
-        </main>
-      </div>
+      {/* Modern Mobile Bottom Navigation Bar */}
+      <nav
+        aria-label="Mobile Navigation"
+        className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-background/90 backdrop-blur-xl border-t border-border/70 shadow-lg px-2 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] flex items-center justify-around"
+      >
+        {navigation.map((item) => {
+          const isActive = location.pathname === item.href
+          const Icon = item.icon
+          return (
+            <NavLink
+              key={item.name}
+              to={item.href}
+              className={cn(
+                'relative flex flex-col items-center justify-center py-1.5 px-3 min-w-[56px] rounded-xl transition-all duration-150',
+                isActive
+                  ? 'text-primary font-bold'
+                  : 'text-muted-foreground hover:text-foreground active:scale-95'
+              )}
+            >
+              {isActive && (
+                <span className="absolute -top-1 w-7 h-1 rounded-full bg-primary animate-in fade-in zoom-in-75 duration-200" />
+              )}
+              <Icon className={cn('h-5 w-5 transition-transform duration-150', isActive && 'scale-110 text-primary')} />
+              <span className="text-[10px] mt-1 tracking-tight">{item.name}</span>
+            </NavLink>
+          )
+        })}
+      </nav>
     </div>
   )
 }

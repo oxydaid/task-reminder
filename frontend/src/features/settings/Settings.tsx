@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,8 +11,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Loader2, Bell, Lock, User, Smartphone, Eye, EyeOff, AlertTriangle, LogOut } from 'lucide-react'
+import {
+  Loader2,
+  Bell,
+  Lock,
+  User,
+  Smartphone,
+  Eye,
+  EyeOff,
+  LogOut,
+  Bot,
+  QrCode,
+  CheckCircle2,
+  Copy,
+  RefreshCw,
+  Clock
+} from 'lucide-react'
 import { useAuth, useSettings } from '@/hooks/useApi'
+import { api } from '@/lib/api'
+import { toast } from 'sonner'
 
 const settingsSchema = z.object({
   timezone: z.string().min(1),
@@ -42,24 +59,30 @@ const timezones = [
 ]
 
 const reminderOffsets = [
-  { value: 30, label: '30 menit' },
-  { value: 60, label: '1 jam' },
-  { value: 180, label: '3 jam' },
-  { value: 360, label: '6 jam' },
-  { value: 720, label: '12 jam' },
-  { value: 1440, label: '1 hari (H-1)' },
-  { value: 2880, label: '2 hari (H-2)' },
-  { value: 4320, label: '3 hari (H-3)' },
-  { value: 10080, label: '1 minggu (H-7)' }
+  { value: 30, label: '30 menit sebelum deadline' },
+  { value: 60, label: '1 jam sebelum deadline' },
+  { value: 180, label: '3 jam sebelum deadline' },
+  { value: 360, label: '6 jam sebelum deadline' },
+  { value: 720, label: '12 jam sebelum deadline' },
+  { value: 1440, label: '1 hari sebelum deadline (H-1)' },
+  { value: 2880, label: '2 hari sebelum deadline (H-2)' },
+  { value: 4320, label: '3 hari sebelum deadline (H-3)' }
 ]
 
 export function Settings() {
   const { user, logout, changePassword } = useAuth()
   const { settings, isLoading, update: updateSettings, isUpdating } = useSettings()
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'security'>('profile')
+
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'security' | 'bot'>('profile')
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // WhatsApp Admin Bot state
+  const [botPhone, setBotPhone] = useState('')
+  const [pairingCode, setPairingCode] = useState<string | null>(null)
+  const [botStatus, setBotStatus] = useState<string>('disconnected')
+  const [isBotLoading, setIsBotLoading] = useState(false)
 
   const {
     handleSubmit: handleSubmitSettings,
@@ -77,10 +100,62 @@ export function Settings() {
   const {
     register: registerPassword,
     handleSubmit: handleSubmitPassword,
-    formState: { errors: passwordErrors }
+    formState: { errors: passwordErrors },
+    reset: resetPasswordForm
   } = useForm<ChangePasswordData>({
     resolver: zodResolver(changePasswordSchema)
   })
+
+  // Fetch bot status if admin
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      api.admin.getWhatsAppStatus()
+        .then(res => {
+          setBotStatus(res.status)
+          if (res.pairingCode) setPairingCode(res.pairingCode)
+        })
+        .catch(() => {})
+    }
+  }, [user?.role])
+
+  const handleGeneratePairingCode = async () => {
+    if (!botPhone.trim()) {
+      toast.error('Masukkan nomor telepon WhatsApp bot terlebih dahulu')
+      return
+    }
+
+    setIsBotLoading(true)
+    try {
+      const res = await api.admin.generatePairingCode(botPhone)
+      setPairingCode(res.pairingCode)
+      toast.success('Kode pairing berhasil dibuat')
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal generate pairing code')
+    } finally {
+      setIsBotLoading(false)
+    }
+  }
+
+  const handleReconnectBot = async () => {
+    setIsBotLoading(true)
+    try {
+      await api.admin.reconnectWhatsApp()
+      toast.success('Inisialisasi ulang koneksi WhatsApp...')
+      const res = await api.admin.getWhatsAppStatus()
+      setBotStatus(res.status)
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal reconnect')
+    } finally {
+      setIsBotLoading(false)
+    }
+  }
+
+  const copyPairingCode = () => {
+    if (pairingCode) {
+      navigator.clipboard.writeText(pairingCode)
+      toast.success('Kode disalin ke clipboard')
+    }
+  }
 
   const onSubmitSettings = async (data: SettingsFormData) => {
     try {
@@ -97,6 +172,7 @@ export function Settings() {
         newPassword: data.newPassword,
         confirmNewPassword: data.confirmNewPassword
       })
+      resetPasswordForm()
     } catch {
       // Handled
     }
@@ -108,115 +184,127 @@ export function Settings() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 bg-muted animate-pulse rounded w-1/4" />
-        <Card><CardContent className="h-64 animate-pulse" /></Card>
+      <div className="space-y-4 max-w-2xl">
+        <div className="h-7 bg-muted animate-pulse rounded-xl w-1/3" />
+        <div className="h-64 bg-card rounded-2xl border border-border/60 animate-pulse" />
       </div>
     )
   }
 
+  const tabs = [
+    { id: 'profile', label: 'Profil', icon: User },
+    { id: 'notifications', label: 'Pengingat WA', icon: Bell },
+    { id: 'security', label: 'Keamanan', icon: Lock },
+    ...(user?.role === 'admin' ? [{ id: 'bot', label: 'Bot WA Baileys', icon: Bot }] : [])
+  ]
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-5 max-w-2xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Pengaturan</h1>
-        <p className="text-muted-foreground">Kelola pengaturan akun dan preferensi Anda</p>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Pengaturan</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">Kelola profil, waktu notifikasi, dan preferensi akun Anda</p>
       </div>
 
-      <div className="flex gap-2 border-b">
-        {[
-          { id: 'profile', label: 'Profil', icon: User },
-          { id: 'notifications', label: 'Notifikasi', icon: Bell },
-          { id: 'security', label: 'Keamanan', icon: Lock }
-        ].map(tab => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? 'default' : 'ghost'}
-            onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className="gap-2"
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </Button>
-        ))}
+      {/* Tabs Menu */}
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+        {tabs.map(tab => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                isActive
+                  ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                  : 'bg-card text-muted-foreground border-border/70 hover:bg-muted/80 hover:text-foreground'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
       </div>
 
+      {/* Tab: Profil */}
       {activeTab === 'profile' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Profil
+        <Card className="rounded-2xl border border-border/70 shadow-xs">
+          <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <User className="h-4 w-4 text-primary" />
+              Informasi Akun
             </CardTitle>
-            <CardDescription>Informasi akun dan preferensi dasar</CardDescription>
+            <CardDescription className="text-xs">Informasi nomor WhatsApp dan zona waktu</CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmitSettings(onSubmitSettings)} className="space-y-6">
-              <div className="space-y-2">
-                <Label>Nomor WhatsApp</Label>
-                <div className="flex items-center gap-3">
-                  <Smartphone className="h-5 w-5 text-muted-foreground" />
-                  <Input value={user?.whatsapp_number || ''} disabled />
-                  {user?.whatsapp_verified_at ? (
-                    <span className="text-green-500 text-sm flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-green-500" />
-                      Terverifikasi
-                    </span>
-                  ) : (
-                    <span className="text-yellow-500 text-sm flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                      Belum terverifikasi
-                    </span>
-                  )}
+          <CardContent className="p-4 sm:p-5 pt-0">
+            <form onSubmit={handleSubmitSettings(onSubmitSettings)} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Nomor WhatsApp Terdaftar</Label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={user?.whatsapp_number || ''}
+                      disabled
+                      className="pl-9 rounded-xl bg-muted/40 font-mono text-xs sm:text-sm"
+                    />
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Terverifikasi
+                  </span>
                 </div>
               </div>
 
-              <Separator />
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">Zona Waktu</Label>
-                  <Select
-                    value={watch('timezone')}
-                    onValueChange={value => setValue('timezone', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih zona waktu" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timezones.map(tz => (
-                        <SelectItem key={tz.value} value={tz.value}>
-                          {tz.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Zona Waktu</Label>
+                <Select
+                  value={watch('timezone')}
+                  onValueChange={value => setValue('timezone', value)}
+                >
+                  <SelectTrigger className="rounded-xl text-xs sm:text-sm">
+                    <SelectValue placeholder="Pilih zona waktu" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {timezones.map(tz => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">Jadwal deadline & pengingat disesuaikan dengan zona waktu ini.</p>
               </div>
 
-              <Button type="submit" disabled={isUpdating}>
-                {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Simpan Perubahan
-              </Button>
+              <div className="pt-2">
+                <Button type="submit" disabled={isUpdating} className="rounded-xl font-semibold text-xs sm:text-sm px-5">
+                  {isUpdating && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                  Simpan Profil
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
       )}
 
+      {/* Tab: Pengingat Notifikasi */}
       {activeTab === 'notifications' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Preferensi Pengingat
+        <Card className="rounded-2xl border border-border/70 shadow-xs">
+          <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" />
+              Preferensi Pengingat WhatsApp
             </CardTitle>
-            <CardDescription>Atur cara Anda menerima notifikasi WhatsApp</CardDescription>
+            <CardDescription className="text-xs">Atur pengiriman pesan otomatis ke WhatsApp Anda</CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmitSettings(onSubmitSettings)} className="space-y-6">
-              <div className="flex items-center justify-between">
+          <CardContent className="p-4 sm:p-5 pt-0">
+            <form onSubmit={handleSubmitSettings(onSubmitSettings)} className="space-y-5">
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/60 bg-muted/30">
                 <div className="space-y-0.5">
-                  <Label>Notifikasi WhatsApp</Label>
-                  <p className="text-sm text-muted-foreground">Aktifkan atau nonaktifkan semua pengingat otomatis</p>
+                  <p className="text-xs sm:text-sm font-semibold text-foreground">Kirim Notifikasi WhatsApp</p>
+                  <p className="text-[11px] text-muted-foreground">Kirim pesan WhatsApp sebelum deadline tugas tiba</p>
                 </div>
                 <Switch
                   checked={watch('reminderEnabled')}
@@ -224,19 +312,16 @@ export function Settings() {
                 />
               </div>
 
-              <Separator />
-
-              <div className="space-y-2">
-                <Label>Waktu Pengingat Standar</Label>
-                <p className="text-sm text-muted-foreground">Kapan notifikasi harus dikirim sebelum deadline tugas</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Waktu Pengingat Default</Label>
                 <Select
                   value={String(watch('defaultReminderOffsetMinutes'))}
                   onValueChange={value => setValue('defaultReminderOffsetMinutes', Number(value))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl text-xs sm:text-sm">
                     <SelectValue placeholder="Pilih waktu pengingat" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     {reminderOffsets.map(offset => (
                       <SelectItem key={offset.value} value={String(offset.value)}>
                         {offset.label}
@@ -244,123 +329,206 @@ export function Settings() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Bot akan menjadwalkan notifikasi WhatsApp pada waktu yang dipilih sebelum deadline setiap tugas.
+                </p>
               </div>
 
-              <Button type="submit" disabled={isUpdating}>
-                {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Simpan Perubahan
-              </Button>
+              <div className="pt-2">
+                <Button type="submit" disabled={isUpdating} className="rounded-xl font-semibold text-xs sm:text-sm px-5">
+                  {isUpdating && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                  Simpan Pengaturan
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
       )}
 
+      {/* Tab: Keamanan Akun */}
       {activeTab === 'security' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5" />
+        <Card className="rounded-2xl border border-border/70 shadow-xs">
+          <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Lock className="h-4 w-4 text-primary" />
               Keamanan Akun
             </CardTitle>
-            <CardDescription>Ubah kata sandi akun Anda</CardDescription>
+            <CardDescription className="text-xs">Ubah kata sandi akun masuk Anda</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-5 pt-0">
             <form onSubmit={handleSubmitPassword(onSubmitPassword)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Password Saat Ini</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Password Saat Ini</Label>
                 <div className="relative">
                   <Input
-                    id="currentPassword"
                     type={showCurrentPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
                     {...registerPassword('currentPassword')}
+                    className="rounded-xl pr-10 text-xs sm:text-sm"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
+                  </button>
                 </div>
                 {passwordErrors.currentPassword && (
                   <p className="text-xs text-destructive">{passwordErrors.currentPassword.message}</p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">Password Baru</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Password Baru</Label>
                 <div className="relative">
                   <Input
-                    id="newPassword"
                     type={showNewPassword ? 'text' : 'password'}
+                    placeholder="Minimal 8 karakter"
                     {...registerPassword('newPassword')}
+                    className="rounded-xl pr-10 text-xs sm:text-sm"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
+                  </button>
                 </div>
                 {passwordErrors.newPassword && (
                   <p className="text-xs text-destructive">{passwordErrors.newPassword.message}</p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmNewPassword">Konfirmasi Password Baru</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Konfirmasi Password Baru</Label>
                 <div className="relative">
                   <Input
-                    id="confirmNewPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Ulangi password baru"
                     {...registerPassword('confirmNewPassword')}
+                    className="rounded-xl pr-10 text-xs sm:text-sm"
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
+                  </button>
                 </div>
                 {passwordErrors.confirmNewPassword && (
                   <p className="text-xs text-destructive">{passwordErrors.confirmNewPassword.message}</p>
                 )}
               </div>
 
-              <Button type="submit" variant="outline" className="w-full">
-                Ubah Password
+              <div className="pt-2">
+                <Button type="submit" variant="outline" className="rounded-xl font-semibold text-xs sm:text-sm w-full">
+                  Perbarui Password
+                </Button>
+              </div>
+
+              <Separator className="my-4" />
+
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleLogout}
+                className="w-full rounded-xl font-semibold text-xs sm:text-sm gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Keluar dari Akun Ini
               </Button>
             </form>
-
-            <Separator className="my-6" />
-
-            <div className="space-y-2">
-              <Button variant="destructive" onClick={handleLogout} className="w-full">
-                <LogOut className="mr-2 h-4 w-4" />
-                Keluar dari Akun
-              </Button>
-            </div>
           </CardContent>
         </Card>
       )}
 
-      {activeTab === 'security' && !user?.whatsapp_verified_at && (
-        <Card className="border-yellow-500/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3 p-4 bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200 rounded-lg">
-              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+      {/* Tab: Bot WhatsApp Admin (Baileys) */}
+      {activeTab === 'bot' && user?.role === 'admin' && (
+        <Card className="rounded-2xl border border-border/70 shadow-xs">
+          <CardHeader className="p-4 sm:p-5 pb-3">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Nomor WhatsApp belum diverifikasi</p>
-                <p className="text-sm">Anda tidak akan menerima notifikasi pengingat tugas hingga verifikasi selesai.</p>
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-primary" />
+                  Koneksi Bot WhatsApp (Baileys)
+                </CardTitle>
+                <CardDescription className="text-xs">Hubungkan nomor bot WhatsApp pengirim notifikasi via Pairing Code</CardDescription>
               </div>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                botStatus === 'connected'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+              }`}>
+                {botStatus === 'connected' ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Clock className="h-3.5 w-3.5" />}
+                {botStatus === 'connected' ? 'Terhubung' : 'Belum Terhubung'}
+              </span>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-4 sm:p-5 pt-0 space-y-4">
+            <div className="p-3.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 text-xs text-blue-900 dark:text-blue-200 space-y-1.5">
+              <p className="font-semibold flex items-center gap-1.5">
+                <QrCode className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                Cara Menghubungkan WhatsApp dari Web (Tanpa Terminal):
+              </p>
+              <ol className="list-decimal list-inside space-y-0.5 text-[11px] opacity-90 pl-1">
+                <li>Masukkan nomor WhatsApp bot Anda di bawah, lalu klik <strong>Buat Kode Pairing</strong>.</li>
+                <li>Buka aplikasi WhatsApp di HP bot Anda.</li>
+                <li>Buka <strong>Pengaturan / Titik Tiga &gt; Perangkat Tertaut (Linked Devices)</strong>.</li>
+                <li>Pilih <strong>Tautkan Perangkat</strong> &gt; pilih opsi <strong>Tautkan dengan nomor telepon saja</strong>.</li>
+                <li>Ketik kode 8 digit yang muncul di web ini. Selesai!</li>
+              </ol>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Nomor WhatsApp Bot</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Contoh: 08123456789 atau 628123456789"
+                  value={botPhone}
+                  onChange={e => setBotPhone(e.target.value)}
+                  className="rounded-xl text-xs sm:text-sm font-mono"
+                />
+                <Button
+                  onClick={handleGeneratePairingCode}
+                  disabled={isBotLoading}
+                  className="rounded-xl text-xs font-semibold shrink-0"
+                >
+                  {isBotLoading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  Buat Kode Pairing
+                </Button>
+              </div>
+            </div>
+
+            {pairingCode && (
+              <div className="p-4 rounded-xl border border-primary/40 bg-primary/5 flex flex-col items-center justify-center text-center space-y-2">
+                <span className="text-[11px] font-medium text-muted-foreground">KODE PAIRING WHATSAPP ANDA:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-2xl sm:text-3xl font-extrabold tracking-widest text-primary">
+                    {pairingCode}
+                  </span>
+                  <Button size="icon" variant="outline" onClick={copyPairingCode} className="h-8 w-8 rounded-lg">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Masukkan kode di atas pada WhatsApp di HP Bot Anda sekarang.</p>
+              </div>
+            )}
+
+            <div className="pt-2 flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReconnectBot}
+                disabled={isBotLoading}
+                className="rounded-xl text-xs font-semibold gap-1.5"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isBotLoading ? 'animate-spin' : ''}`} />
+                Segarkan Status / Reconnect
+              </Button>
             </div>
           </CardContent>
         </Card>

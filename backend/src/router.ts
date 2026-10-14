@@ -53,7 +53,7 @@ function matchRoute(path: string, routePath: string): { match: boolean; params: 
 }
 
 export async function handleRequest(req: Request, res: Response): Promise<void> {
-  corsMiddleware(res)
+  corsMiddleware(req, res)
   securityHeaders(res)
 
   if (req.method === 'OPTIONS') {

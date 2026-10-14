@@ -6,9 +6,19 @@ import { toast } from 'sonner'
 export function useAuth() {
   const queryClient = useQueryClient()
 
-  const { data: user, isLoading, error } = useQuery<User | null>({
+  const { data: user, isLoading, isFetched, error } = useQuery<User | null>({
     queryKey: ['auth', 'me'],
-    queryFn: () => api.auth.me() as Promise<User>,
+    queryFn: async () => {
+      try {
+        const res = await api.auth.me() as any
+        return res?.user || res || null
+      } catch (err: any) {
+        if (err?.status === 401) {
+          return null
+        }
+        throw err
+      }
+    },
     retry: false,
     staleTime: 1000 * 60 * 5
   })
@@ -80,7 +90,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoading,
+    isLoading: isLoading && !isFetched,
     error,
     isAuthenticated: !!user,
     login: loginMutation.mutateAsync,

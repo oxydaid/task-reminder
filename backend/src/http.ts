@@ -106,8 +106,9 @@ export function adminMiddleware(req: Request, res: Response, next: () => void): 
   next()
 }
 
-export function corsMiddleware(res: Response): void {
-  res.setHeader('Access-Control-Allow-Origin', config.corsOrigin)
+export function corsMiddleware(req: Request, res: Response): void {
+  const origin = req.headers.origin || config.corsOrigin || '*'
+  res.setHeader('Access-Control-Allow-Origin', origin)
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   res.setHeader('Access-Control-Allow-Credentials', 'true')

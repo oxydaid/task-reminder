@@ -1,4 +1,349 @@
-# PRD Addendum — Landing Page, Pricing & Admin Management
+# PRD — Task Reminder
+
+## 1. Overview
+
+**Task Reminder** adalah aplikasi pengingat tugas mahasiswa yang mengirimkan notifikasi melalui WhatsApp agar pengguna tidak lupa terhadap tenggat tugas.
+
+### Tujuan
+- Mengelola mata kuliah dan tugas dalam satu dashboard.
+- Mengirim pengingat otomatis melalui WhatsApp sebelum deadline.
+- Menyediakan autentikasi sederhana dan data yang terpisah untuk setiap pengguna.
+- Tetap ringan, mudah dipelihara, dan siap dijalankan di Pterodactyl.
+
+## 2. Tech Stack
+
+### Frontend
+- **Next.js** dengan App Router.
+- TypeScript.
+- Tailwind CSS v4, konfigurasi CSS langsung di `app/globals.css`, tanpa `tailwind.config.js`.
+- shadcn/ui.
+- PWA untuk pengalaman seperti aplikasi mobile.
+
+### Backend
+- **Go** sebagai bahasa utama.
+- **Fiber** sebagai HTTP framework.
+- **whatsmeow** sebagai koneksi WhatsApp.
+- SQLite sebagai database.
+- Scheduler internal Go untuk memeriksa jadwal pengingat.
+
+### Deployment
+- Pterodactyl dengan Docker image/runtime yang sesuai.
+- Backend dan frontend dapat dijalankan sebagai dua proses dalam satu container, atau sebagai dua server terpisah.
+- Gunakan satu sesi WhatsApp global untuk seluruh aplikasi.
+
+## 3. Fitur Utama
+
+### 3.1 Autentikasi
+- Registrasi menggunakan nama, nomor WhatsApp, dan password.
+- Login menggunakan nomor WhatsApp dan password.
+- Logout dan pengelolaan sesi.
+- Password disimpan menggunakan Argon2id atau bcrypt.
+- Gunakan cookie `HttpOnly`, `Secure` pada HTTPS, serta perlindungan CSRF yang sesuai.
+- Normalisasi nomor WhatsApp dan validasi input.
+
+**Catatan:** Nomor telepon yang dimasukkan saat registrasi belum membuktikan kepemilikan nomor tersebut. Verifikasi nomor dapat ditambahkan jika dibutuhkan.
+
+### 3.2 Normalisasi Nomor WhatsApp
+Terima format input:
+- `+628123456789`
+- `628123456789`
+- `08123456789`
+- `8123456789`
+
+Normalisasikan ke format kanonis `62xxxxxxxxxx`, lalu validasi dan cegah duplikasi nomor pengguna.
+
+### 3.3 Dashboard
+Tampilkan:
+- Jumlah tugas aktif.
+- Tugas selesai.
+- Tugas yang mendekati deadline.
+- Tugas terlambat.
+- Daftar tugas terdekat.
+
+### 3.4 Mata Kuliah
+- Tambah, lihat, ubah, dan hapus mata kuliah.
+- Setiap mata kuliah dimiliki oleh pengguna terkait.
+- Mata kuliah yang masih memiliki tugas harus ditangani dengan aturan penghapusan yang jelas.
+
+### 3.5 Tugas
+Setiap tugas memiliki:
+- Judul.
+- Deskripsi opsional.
+- Mata kuliah.
+- Deadline.
+- Status: pending atau completed.
+- Pengaturan pengingat opsional.
+
+Fitur:
+- CRUD tugas.
+- Filter berdasarkan mata kuliah, status, dan deadline.
+- Tandai tugas selesai.
+- Tampilkan status terlambat secara otomatis.
+- Validasi agar tugas hanya dapat terhubung dengan mata kuliah milik pengguna yang sama.
+
+### 3.6 Pengingat WhatsApp
+- Pengingat default dikirim **2 hari sebelum deadline**.
+- Pengguna dapat mengatur waktu pengingat.
+- Mendukung beberapa interval, misalnya 2 hari dan 1 hari sebelum deadline.
+- Hanya tugas pending yang memiliki deadline valid yang boleh diingatkan.
+- Tugas selesai tidak menerima pengingat berikutnya.
+- Gunakan zona waktu `Asia/Jakarta`.
+- Pengingat diproses oleh backend, sehingga frontend tidak harus selalu terbuka.
+
+Contoh pesan:
+
+> Halo! 👋 Pengingat tugas kamu:
+>
+> **Judul:** Makalah Pemrograman  
+> **Mata Kuliah:** Pemrograman Web  
+> **Deadline:** 22 Oktober 2026, 23.59 WIB
+>
+> Jangan lupa diselesaikan, ya!
+
+### 3.7 Koneksi WhatsApp
+- Gunakan `whatsmeow` untuk menghubungkan satu akun WhatsApp pengirim.
+- Satu sesi WhatsApp dipakai bersama oleh seluruh pengguna aplikasi.
+- Pengguna tidak perlu menghubungkan akun WhatsApp masing-masing.
+- Sediakan halaman admin untuk melihat status koneksi dan memindai QR saat pairing.
+- Simpan kredensial sesi secara persisten, bukan hanya di memori.
+- Tangani reconnect, disconnect, kegagalan pengiriman, dan shutdown dengan aman.
+- Batasi akses pairing dan informasi sesi hanya untuk admin.
+
+**Penting:** `whatsmeow` menggunakan protokol WhatsApp Web tidak resmi. Perubahan protokol dapat menyebabkan gangguan, dan penggunaan otomatisasi memiliki risiko pembatasan akun. Gunakan secara bertanggung jawab.
+
+## 4. Arsitektur
+
+```text
+Browser / PWA
+     |
+     v
+Next.js Frontend
+     |
+     | HTTP API
+     v
+Go + Fiber Backend
+     |
+     +---- SQLite
+     |
+     +---- Reminder Scheduler
+     |
+     +---- whatsmeow
+                 |
+                 v
+          WhatsApp Gateway
+                 |
+                 v
+           Nomor Pengguna
+```
+
+### Aturan arsitektur
+- Next.js bertanggung jawab atas UI dan pengalaman pengguna.
+- Go + Fiber menangani API, autentikasi, logika bisnis, scheduler, dan pengiriman WhatsApp.
+- SQLite menyimpan data aplikasi serta status pengingat.
+- Scheduler berjalan di backend, bukan di browser.
+- Jangan menambahkan microservices, Redis, atau message broker sebelum benar-benar diperlukan.
+- Pisahkan modul berdasarkan tanggung jawab agar mudah diuji dan dikembangkan.
+
+## 5. Database SQLite
+
+Tabel minimal:
+
+- `users` — akun dan nomor pengguna.
+- `sessions` — sesi autentikasi.
+- `courses` — mata kuliah.
+- `tasks` — tugas dan deadline.
+- `user_settings` — preferensi pengingat.
+- `reminder_logs` — riwayat pengingat dan status pengiriman.
+- `whatsapp_state` — metadata status koneksi WhatsApp jika diperlukan.
+
+### Ketentuan database
+- Setiap data bisnis harus memiliki `user_id`.
+- Terapkan foreign key, indeks, dan migrasi database.
+- Gunakan query parameterized atau ORM yang sesuai.
+- Terapkan transaksi pada operasi yang membutuhkan konsistensi.
+- Kredensial sesi WhatsApp harus disimpan dengan aman dan persisten.
+- Hindari menyimpan password atau secret dalam bentuk plaintext.
+- Buat mekanisme backup database.
+
+## 6. Pencegahan Pengingat Ganda
+
+- Setiap pengingat memiliki identitas unik berdasarkan tugas, jadwal, dan penerima.
+- Simpan status pengingat sebelum atau selama proses pengiriman secara konsisten.
+- Catat status seperti `pending`, `sent`, dan `failed`.
+- Jangan mengirim ulang pengingat yang sudah sukses hanya karena backend restart.
+- Terapkan retry terbatas untuk kegagalan sementara.
+- Scheduler harus dapat melanjutkan pekerjaan setelah aplikasi restart.
+- Gunakan satu instance scheduler aktif agar tidak terjadi pengiriman ganda.
+
+## 7. REST API
+
+Prefix: `/api/v1`
+
+### Auth
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/logout`
+- `GET /auth/me`
+
+### Courses
+- `GET /courses`
+- `POST /courses`
+- `GET /courses/:id`
+- `PUT /courses/:id`
+- `DELETE /courses/:id`
+
+### Tasks
+- `GET /tasks`
+- `POST /tasks`
+- `GET /tasks/:id`
+- `PUT /tasks/:id`
+- `DELETE /tasks/:id`
+- `PATCH /tasks/:id/complete`
+
+### Settings
+- `GET /settings`
+- `PUT /settings`
+
+### Admin
+- `GET /admin/whatsapp/status`
+- `POST /admin/whatsapp/pair`
+- `POST /admin/whatsapp/logout`
+
+### Health
+- `GET /health`
+
+Semua endpoint harus memvalidasi autentikasi, otorisasi, dan kepemilikan data. Endpoint admin hanya dapat digunakan oleh akun dengan role admin.
+
+## 8. Struktur Folder
+
+```text
+task-reminder/
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   ├── hooks/
+│   ├── public/
+│   ├── app/globals.css
+│   └── package.json
+├── backend/
+│   ├── cmd/
+│   │   └── server/
+│   ├── internal/
+│   │   ├── auth/
+│   │   ├── users/
+│   │   ├── courses/
+│   │   ├── tasks/
+│   │   ├── reminders/
+│   │   ├── whatsapp/
+│   │   ├── database/
+│   │   └── http/
+│   ├── migrations/
+│   ├── go.mod
+│   └── go.sum
+├── data/
+├── DESIGN.md
+├── PRD.md
+├── .env.example
+├── .gitignore
+└── README.md
+```
+
+Sesuaikan struktur bila diperlukan, tetapi hindari pemecahan modul yang tidak memberikan manfaat nyata.
+
+## 9. UI/UX dan PWA
+
+- Mobile-first dan responsif.
+- Desain minimalis, rapi, dan tidak ramai.
+- Gunakan shadcn/ui untuk komponen antarmuka.
+- Jadikan `DESIGN.md` sebagai pedoman warna, tipografi, spacing, layout, dan komponen.
+- Halaman: login, registrasi, dashboard, tugas, mata kuliah, pengaturan, dan status WhatsApp khusus admin.
+- Sediakan loading, empty state, error state, dan konfirmasi tindakan penting.
+- PWA menyediakan manifest, ikon, dan service worker untuk aset statis.
+- Jangan menyimpan halaman privat atau respons API sensitif dalam cache publik.
+- Fitur offline penuh bukan prioritas.
+
+## 10. Keamanan
+
+- Validasi semua input di backend.
+- Gunakan hashing password yang kuat.
+- Lindungi autentikasi dari brute-force.
+- Gunakan HTTPS di production.
+- Batasi CORS ke origin frontend yang diizinkan.
+- Terapkan rate limiting dan security headers.
+- Pastikan pengguna tidak bisa membaca atau mengubah data pengguna lain.
+- Jangan mengekspos token, kredensial WhatsApp, secret, atau stack trace.
+- Jangan memasukkan file database dan kredensial sesi ke Git.
+
+## 11. Deployment Production
+
+Target utama adalah Pterodactyl.
+
+### Persyaratan
+- Konfigurasi port melalui environment variable.
+- Frontend Next.js dijalankan dalam mode production.
+- Backend Go dikompilasi menjadi binary Linux yang sesuai dengan environment.
+- Gunakan direktori persisten untuk SQLite dan kredensial sesi WhatsApp.
+- Pastikan restart container tidak menghapus database maupun sesi WhatsApp.
+- Tangani `SIGTERM` dan `SIGINT` agar server berhenti secara graceful.
+- Sediakan health check dan log yang informatif.
+- Pisahkan konfigurasi development dan production.
+
+### Pilihan deployment
+1. **Satu container:** menjalankan binary Go dan Next.js production melalui entrypoint/supervisor sederhana.
+2. **Dua container/server:** Next.js dan Go dijalankan terpisah, dengan API URL dan CORS yang dikonfigurasi dengan benar.
+
+Untuk setup Pterodactyl yang sederhana, satu container dapat digunakan, tetapi proses Go dan Next.js harus sama-sama dipantau agar kegagalan salah satunya tidak tersembunyi. Jangan menjalankan beberapa scheduler atau sesi WhatsApp aktif secara bersamaan.
+
+### Environment variable
+
+Contoh nama konfigurasi:
+
+- `PORT`
+- `APP_ENV`
+- `DATABASE_PATH`
+- `FRONTEND_URL`
+- `SESSION_SECRET`
+- `ADMIN_PHONE`
+- `WHATSAPP_STORE_PATH`
+- `TIMEZONE`
+
+Secret harus dibuat secara aman dan tidak di-commit ke repository.
+
+## 12. Testing dan Acceptance Criteria
+
+Aplikasi dianggap siap jika:
+
+- Pengguna dapat registrasi, login, dan logout.
+- Format nomor Indonesia dinormalisasi dengan benar.
+- Pengguna dapat mengelola mata kuliah dan tugas.
+- Data setiap pengguna terisolasi.
+- Pengingat default 2 hari sebelum deadline berjalan.
+- Pengingat tidak dikirim berulang setelah sukses.
+- Pengingat berhenti setelah tugas selesai.
+- Sesi WhatsApp tetap tersimpan setelah restart.
+- Kegagalan koneksi WhatsApp tercatat dan dapat dipulihkan.
+- Frontend responsif dan dapat diinstal sebagai PWA.
+- Build frontend dan backend berhasil.
+- Aplikasi dapat dijalankan di Pterodactyl dengan penyimpanan persisten.
+
+## 13. Instruksi Implementasi untuk AI Agent
+
+1. Periksa repository dan lingkungan sebelum mengubah file.
+2. Buat rencana implementasi singkat sebelum coding.
+3. Inisialisasi Next.js dan modul Go dengan struktur yang rapi.
+4. Implementasikan database dan migrasi terlebih dahulu.
+5. Implementasikan autentikasi dan isolasi data.
+6. Implementasikan CRUD mata kuliah dan tugas.
+7. Implementasikan koneksi `whatsmeow` dan pairing admin.
+8. Implementasikan scheduler serta pencegahan pengingat ganda.
+9. Bangun frontend mengikuti `DESIGN.md`.
+10. Tambahkan pengujian, konfigurasi production, dan dokumentasi deployment.
+11. Jalankan formatter, test, dan build; perbaiki error sebelum menyatakan selesai.
+
+**Prinsip utama:** simpel tetapi andal, aman, hemat resource, mudah dipahami, dan tidak menambahkan kompleksitas tanpa kebutuhan nyata.
+
+# FROTEND — Landing Page, Pricing & Admin Management
 
 ## 1. Landing Page
 

@@ -1,6 +1,8 @@
 package http
 
 import (
+	"net"
+	"net/url"
 	"strings"
 	"time"
 
@@ -21,17 +23,27 @@ import (
 )
 
 type Config struct {
-	DB        *database.DB
-	AuthSvc   *auth.Service
-	WASvc     *whatsapp.Service
-	Scheduler *reminders.Scheduler
+	DB             *database.DB
+	AuthSvc        *auth.Service
+	WASvc          *whatsapp.Service
+	Scheduler      *reminders.Scheduler
 	AllowedOrigins string
 }
 
 func SetupRouter(cfg Config) *fiber.App {
 	app := fiber.New(fiber.Config{
-		AppName:      "Task Reminder API v1",
-		ErrorHandler: customErrorHandler,
+		AppName:                 "Task Reminder API v1",
+		ErrorHandler:            customErrorHandler,
+		EnableTrustedProxyCheck: true,
+		TrustedProxies: []string{
+			"127.0.0.1",
+			"::1",
+			"10.0.0.0/8",     // ZeroTier & Private Class A
+			"172.16.0.0/12",   // Docker & Private Class B
+			"192.168.0.0/16",  // Local LAN Class C
+			"100.64.0.0/10",   // ZeroTier / Tailscale CGNAT
+		},
+		ProxyHeader: "X-Forwarded-For",
 	})
 
 	app.Use(recover.New())
@@ -39,13 +51,10 @@ func SetupRouter(cfg Config) *fiber.App {
 		Format: "[${time}] ${status} - ${latency} ${method} ${path}\n",
 	}))
 
-	allowedOrigins := cfg.AllowedOrigins
-	if allowedOrigins == "" {
-		allowedOrigins = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001"
-	}
-
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
+		AllowOriginsFunc: func(origin string) bool {
+			return isAllowedOrigin(origin, cfg.AllowedOrigins)
+		},
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With",
 		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH, OPTIONS",
 		AllowCredentials: true,
@@ -81,6 +90,9 @@ func SetupRouter(cfg Config) *fiber.App {
 		Max:        15,
 		Expiration: 1 * time.Minute,
 		KeyGenerator: func(c *fiber.Ctx) string {
+			if cfIP := c.Get("CF-Connecting-IP"); cfIP != "" {
+				return cfIP
+			}
 			return c.IP()
 		},
 		LimitReached: func(c *fiber.Ctx) error {
@@ -256,4 +268,62 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 			"message": err.Error(),
 		},
 	})
+}
+
+// isAllowedOrigin handles dynamic CORS checking for Cloudflare Tunnel, ZeroTier, LAN, and configured domains
+func isAllowedOrigin(origin string, customOrigins string) bool {
+	if origin == "" {
+		return true
+	}
+
+	trimmedOrigin := strings.TrimSpace(origin)
+	lowerOrigin := strings.ToLower(trimmedOrigin)
+
+	// If wildcard or empty, allow all origins dynamically
+	if customOrigins == "*" || customOrigins == "" {
+		return true
+	}
+
+	// Check against explicitly configured origins
+	for _, o := range strings.Split(customOrigins, ",") {
+		o = strings.TrimSpace(o)
+		if o == "" {
+			continue
+		}
+		if o == "*" || strings.EqualFold(o, trimmedOrigin) {
+			return true
+		}
+	}
+
+	// Always allow localhost / 127.0.0.1 (any port)
+	if strings.HasPrefix(lowerOrigin, "http://localhost") ||
+		strings.HasPrefix(lowerOrigin, "http://127.0.0.1") ||
+		strings.HasPrefix(lowerOrigin, "https://localhost") ||
+		strings.HasPrefix(lowerOrigin, "https://127.0.0.1") {
+		return true
+	}
+
+	// Always allow private / VPN IP ranges (ZeroTier, LAN, Docker)
+	u, err := url.Parse(lowerOrigin)
+	if err == nil {
+		host := u.Hostname()
+		ip := net.ParseIP(host)
+		if ip != nil {
+			if ip.IsPrivate() || ip.IsLoopback() {
+				return true
+			}
+			// Check CGNAT (100.64.0.0/10) used by ZeroTier / Tailscale
+			_, cgnatNet, _ := net.ParseCIDR("100.64.0.0/10")
+			if cgnatNet != nil && cgnatNet.Contains(ip) {
+				return true
+			}
+		}
+
+		// Cloudflare quick tunnel subdomains
+		if strings.HasSuffix(host, ".trycloudflare.com") {
+			return true
+		}
+	}
+
+	return false
 }

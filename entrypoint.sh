@@ -22,7 +22,7 @@ export BACKEND_PORT="$BACKEND_PORT"
 export BACKEND_URL="http://127.0.0.1:$BACKEND_PORT"
 export DATABASE_PATH="$DATABASE_PATH"
 export WHATSAPP_STORE_PATH="$WHATSAPP_STORE_PATH"
-export CORS_ORIGIN="${CORS_ORIGIN:-http://localhost:$PORT,http://127.0.0.1:$PORT}"
+export CORS_ORIGIN="${CORS_ORIGIN:-*}"
 
 echo "Configuration:"
 echo "- Frontend Port: $PORT"
@@ -56,13 +56,13 @@ BACKEND_PID=$!
 sleep 2
 
 # 2. Start Next.js Frontend
-echo "Starting Next.js Frontend on port $PORT..."
+echo "Starting Next.js Frontend on port $PORT (binding 0.0.0.0)..."
 if [ -x "./node_modules/.bin/next" ]; then
-    ./node_modules/.bin/next start frontend -p "$PORT" &
+    ./node_modules/.bin/next start frontend -p "$PORT" -H 0.0.0.0 &
 elif [ -x "./frontend/node_modules/.bin/next" ]; then
-    ./frontend/node_modules/.bin/next start frontend -p "$PORT" &
+    ./frontend/node_modules/.bin/next start frontend -p "$PORT" -H 0.0.0.0 &
 else
-    npx --no-install next start frontend -p "$PORT" &
+    npx --no-install next start frontend -p "$PORT" -H 0.0.0.0 &
 fi
 FRONTEND_PID=$!
 

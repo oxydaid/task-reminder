@@ -274,8 +274,29 @@ func (s *Service) ChangePassword(userID, currentPassword, newPassword string) er
 }
 
 // Cookie helper
+func isRequestHTTPS(c *fiber.Ctx) bool {
+	if v := os.Getenv("FORCE_SECURE_COOKIE"); v != "" {
+		return strings.EqualFold(v, "true") || v == "1"
+	}
+
+	proto := strings.ToLower(c.Get("X-Forwarded-Proto"))
+	if proto == "https" {
+		return true
+	}
+
+	if strings.EqualFold(c.Get("X-Forwarded-Ssl"), "on") {
+		return true
+	}
+
+	if strings.Contains(strings.ToLower(c.Get("Cf-Visitor")), `"scheme":"https"`) {
+		return true
+	}
+
+	return c.Protocol() == "https"
+}
+
 func SetSessionCookie(c *fiber.Ctx, token string) {
-	isSecure := os.Getenv("APP_ENV") == "production" || strings.HasPrefix(c.Get("X-Forwarded-Proto"), "https")
+	isSecure := isRequestHTTPS(c)
 	c.Cookie(&fiber.Cookie{
 		Name:     "session_id",
 		Value:    token,
@@ -288,7 +309,7 @@ func SetSessionCookie(c *fiber.Ctx, token string) {
 }
 
 func ClearSessionCookie(c *fiber.Ctx) {
-	isSecure := os.Getenv("APP_ENV") == "production" || strings.HasPrefix(c.Get("X-Forwarded-Proto"), "https")
+	isSecure := isRequestHTTPS(c)
 	c.Cookie(&fiber.Cookie{
 		Name:     "session_id",
 		Value:    "",

@@ -1,9 +1,4 @@
 packages:
-  - backend
   - frontend
 allowBuilds:
-  better-sqlite3: true
-  esbuild: true
-  '@whiskeysockets/baileys': true
-  protobufjs: true
   sharp: true

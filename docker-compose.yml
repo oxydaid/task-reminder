@@ -10,21 +10,21 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - BACKEND_PORT=8080
       - DATABASE_PATH=/app/data/task-reminder.sqlite
-      - SESSION_SECRET=${SESSION_SECRET:-your-super-secret-session-key-change-in-production}
-      - APP_BASE_URL=http://localhost:3000
+      - WHATSAPP_STORE_PATH=/app/data/whatsapp.sqlite
       - APP_TIMEZONE=Asia/Jakarta
-      - WHATSAPP_AUTH_DIR=/app/data/whatsapp-auth
-      - CORS_ORIGIN=http://localhost:3000
+      - ADMIN_PHONE=6281234567890
+      - ADMIN_PASSWORD=adminpassword123
     volumes:
       - app_data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 30s
 
 volumes:
   app_data:

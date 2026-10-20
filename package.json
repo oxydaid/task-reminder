@@ -5,18 +5,16 @@
   "private": true,
   "packageManager": "pnpm@12.11.2",
   "scripts": {
-    "dev": "pnpm --filter backend dev",
-    "build": "pnpm --filter frontend build && pnpm --filter backend build",
-    "start": "node backend/dist/index.js",
-    "db:migrate": "tsx backend/src/db/migrate.ts",
-    "db:seed": "tsx backend/src/db/seed.ts",
-    "typecheck": "pnpm --filter frontend typecheck && pnpm --filter backend typecheck"
+    "dev:frontend": "pnpm --filter @task-reminder/frontend dev",
+    "dev:backend": "cd backend && go run ./cmd/server",
+    "build:frontend": "pnpm --filter @task-reminder/frontend build",
+    "build:backend": "cd backend && go build -o ../bin/server ./cmd/server",
+    "build": "pnpm build:frontend && pnpm build:backend",
+    "start:frontend": "pnpm --filter @task-reminder/frontend start",
+    "start:backend": "./bin/server",
+    "typecheck": "pnpm --filter @task-reminder/frontend typecheck"
   },
   "engines": {
     "node": ">=20.0.0"
-  },
-  "dependencies": {
-    "tsup": "^8.5.1",
-    "tsx": "^4.23.15"
   }
 }

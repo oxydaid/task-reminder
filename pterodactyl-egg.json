@@ -1,37 +1,37 @@
 {
   "name": "Task Reminder",
-  "description": "Task Reminder - Aplikasi pengelolaan tugas kuliah dengan notifikasi WhatsApp",
+  "description": "Task Reminder - Aplikasi pengelolaan tugas kuliah dengan notifikasi WhatsApp otomatis (Next.js + Go + whatsmeow)",
   "author": "Task Reminder Team",
-  "version": "1.0.0",
-  "docker_image": "node:20-alpine",
-  "startup_command": "node backend/dist/index.js",
+  "version": "2.0.0",
+  "docker_image": "ghcr.io/parkervcp/yolks:node_20",
+  "startup_command": "./entrypoint.sh",
   "scripts": {
     "installation": {
-      "script": "apk add --no-cache dumb-init sqlite && npm install -g pnpm@12.11.2 && pnpm install --frozen-lockfile && pnpm --filter frontend build && pnpm --filter backend build && mkdir -p /app/data/sessions /app/data/whatsapp-auth",
-      "container": "node:20-alpine",
+      "script": "apk add --no-cache dumb-init sqlite tzdata go && npm install -g pnpm@12.11.2 && pnpm install --frozen-lockfile && pnpm --filter @task-reminder/frontend build && cd backend && CGO_ENABLED=0 go build -o /app/bin/server ./cmd/server && mkdir -p /app/data",
+      "container": "alpine:3.20",
       "entrypoint": "sh"
     },
     "startup": {
-      "script": "dumb-init node backend/dist/index.js",
-      "container": "node:20-alpine",
+      "script": "./entrypoint.sh",
+      "container": "ghcr.io/parkervcp/yolks:node_20",
       "entrypoint": "sh"
     }
   },
   "variables": [
     {
-      "name": "NODE_ENV",
-      "description": "Environment mode",
-      "env_variable": "NODE_ENV",
-      "default_value": "production",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required|in:production,development"
-    },
-    {
       "name": "Port",
-      "description": "Port untuk aplikasi",
+      "description": "Port public frontend aplikasi",
       "env_variable": "PORT",
       "default_value": "3000",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|numeric|min:1|max:65535"
+    },
+    {
+      "name": "Backend Port",
+      "description": "Port internal API Go Fiber",
+      "env_variable": "BACKEND_PORT",
+      "default_value": "8080",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|numeric|min:1|max:65535"
@@ -46,74 +46,40 @@
       "rules": "required"
     },
     {
-      "name": "Session Secret",
-      "description": "Secret key untuk session (HARUS diganti di production!)",
-      "env_variable": "SESSION_SECRET",
-      "default_value": "",
+      "name": "WhatsApp Store Path",
+      "description": "Path file database sesi WhatsApp whatsmeow (volume persisten)",
+      "env_variable": "WHATSAPP_STORE_PATH",
+      "default_value": "/app/data/whatsapp.sqlite",
       "user_viewable": true,
       "user_editable": true,
-      "rules": "required|min:32"
+      "rules": "required"
     },
     {
-      "name": "App Base URL",
-      "description": "URL base aplikasi (termasuk protocol)",
-      "env_variable": "APP_BASE_URL",
-      "default_value": "https://your-domain.com",
+      "name": "Admin Phone",
+      "description": "Nomor WhatsApp admin awal untuk login pertama kali",
+      "env_variable": "ADMIN_PHONE",
+      "default_value": "6281234567890",
       "user_viewable": true,
       "user_editable": true,
-      "rules": "required|url"
+      "rules": "required"
     },
     {
-      "name": "App Timezone",
-      "description": "Zona waktu default aplikasi",
+      "name": "Admin Password",
+      "description": "Password admin awal",
+      "env_variable": "ADMIN_PASSWORD",
+      "default_value": "adminpassword123",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|min:6"
+    },
+    {
+      "name": "Timezone",
+      "description": "Zona waktu aplikasi (Asia/Jakarta, Asia/Makassar, Asia/Jayapura)",
       "env_variable": "APP_TIMEZONE",
       "default_value": "Asia/Jakarta",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required"
-    },
-    {
-      "name": "WhatsApp Auth Directory",
-      "description": "Direktori untuk menyimpan sesi WhatsApp (harus persisten)",
-      "env_variable": "WHATSAPP_AUTH_DIR",
-      "default_value": "/app/data/whatsapp-auth",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required"
-    },
-    {
-      "name": "CORS Origin",
-      "description": "Origin yang diizinkan untuk CORS",
-      "env_variable": "CORS_ORIGIN",
-      "default_value": "https://your-domain.com",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required|url"
-    },
-    {
-      "name": "Scheduler Interval",
-      "description": "Cron expression untuk scheduler notifikasi",
-      "env_variable": "SCHEDULER_INTERVAL",
-      "default_value": "* * * * *",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required"
-    }
-  ],
-  "mounts": [
-    {
-      "name": "Data",
-      "description": "Persistent storage untuk database dan sesi WhatsApp",
-      "mount_path": "/app/data",
-      "default_size": 1024
-    }
-  ],
-  "ports": [
-    {
-      "name": "HTTP",
-      "description": "Port HTTP aplikasi",
-      "port": 3000,
-      "protocol": "tcp"
     }
   ]
 }

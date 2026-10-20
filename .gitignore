@@ -54,3 +54,13 @@ coverage
 .cache
 .temp
 tmp
+
+# Next.js & Go build
+.next
+out
+bin/
+*.exe
+
+# Agent artifacts
+.agents/
+skills-lock.json

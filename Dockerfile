@@ -1,61 +1,75 @@
-# Build stage
-FROM node:20-alpine AS builder
+# -------------------------------------------------------------
+# Stage 1: Build Go Backend
+# -------------------------------------------------------------
+FROM golang:1.24-alpine AS backend-builder
+
+WORKDIR /build
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+
+COPY backend/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /build/bin/server ./cmd/server
+
+# -------------------------------------------------------------
+# Stage 2: Build Next.js Frontend
+# -------------------------------------------------------------
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
-
-# Install pnpm
 RUN npm install -g pnpm@12.11.2
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
-COPY backend/package.json ./backend/
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/
 
-# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY backend/ ./backend/
 COPY frontend/ ./frontend/
+RUN pnpm --filter @task-reminder/frontend build
 
-# Build frontend
-RUN pnpm --filter frontend build
-
-# Build backend
-RUN pnpm --filter backend build
-
-# Production stage
+# -------------------------------------------------------------
+# Stage 3: Production Runtime
+# -------------------------------------------------------------
 FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init sqlite
+RUN apk add --no-cache dumb-init sqlite tzdata && \
+    npm install -g pnpm@12.11.2
 
 # Create non-root user
-RUN addgroup -g 1000 -S nodejs && \
-    adduser -S -u 1000 -G nodejs nodejs
+RUN addgroup -g 1000 -S appuser && \
+    adduser -S -u 1000 -G appuser appuser
 
-# Copy built files
-COPY --from=builder --chown=nodejs:nodejs /app/backend/dist ./backend/dist
-COPY --from=builder --chown=nodejs:nodejs /app/backend/node_modules ./backend/node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/backend/package.json ./backend/
-COPY --from=builder --chown=nodejs:nodejs /app/frontend/dist ./frontend/dist
+# Copy Go binary
+COPY --from=backend-builder --chown=appuser:appuser /build/bin/server /app/bin/server
 
-# Create data directories
-RUN mkdir -p /app/data/sessions /app/data/whatsapp-auth && \
-    chown -R nodejs:nodejs /app/data
+# Copy Frontend files and dependencies
+COPY --from=frontend-builder --chown=appuser:appuser /app/node_modules ./node_modules
+COPY --from=frontend-builder --chown=appuser:appuser /app/frontend/.next ./frontend/.next
+COPY --from=frontend-builder --chown=appuser:appuser /app/frontend/public ./frontend/public
+COPY --from=frontend-builder --chown=appuser:appuser /app/frontend/package.json ./frontend/
+COPY --from=frontend-builder --chown=appuser:appuser /app/frontend/next.config.mjs ./frontend/
+COPY --from=frontend-builder --chown=appuser:appuser /app/package.json ./package.json
 
-# Switch to non-root user
-USER nodejs
+COPY --chown=appuser:appuser entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh /app/bin/server
 
-# Expose port
+# Persistent data directory
+RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
+
+USER appuser
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV BACKEND_PORT=8080
+ENV DATABASE_PATH=/app/data/task-reminder.sqlite
+ENV WHATSAPP_STORE_PATH=/app/data/whatsapp.sqlite
+ENV APP_TIMEZONE=Asia/Jakarta
+
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Start application
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "backend/dist/index.js"]
+CMD ["./entrypoint.sh"]

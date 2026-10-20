@@ -1,52 +1,67 @@
 #!/bin/sh
 
-# Entrypoint script for Pterodactyl deployment
-# This script handles initialization and startup
+# Entrypoint script for Pterodactyl and Docker deployment
+# Starts Go Fiber Backend and Next.js Frontend with graceful signal propagation
 
 set -e
 
-echo "=== Task Reminder Starting ==="
-echo "Node version: $(node --version)"
-echo "NPM version: $(npm --version)"
+echo "=== Task Reminder Starting (Next.js + Go + whatsmeow) ==="
 
-# Ensure data directories exist
-mkdir -p /app/data/sessions /app/data/whatsapp-auth
+# Set default values
+PORT="${PORT:-3000}"
+BACKEND_PORT="${BACKEND_PORT:-8080}"
+DATABASE_PATH="${DATABASE_PATH:-/app/data/task-reminder.sqlite}"
+WHATSAPP_STORE_PATH="${WHATSAPP_STORE_PATH:-/app/data/whatsapp.sqlite}"
+APP_TIMEZONE="${APP_TIMEZONE:-Asia/Jakarta}"
 
-# Check if database exists, if not run migrations
-if [ ! -f "$DATABASE_PATH" ]; then
-    echo "Database not found, running migrations..."
-    node backend/dist/db/migrate.js
-    
-    # Seed development data if in development mode
-    if [ "$NODE_ENV" = "development" ]; then
-        echo "Seeding development data..."
-        node backend/dist/db/seed.js
+# Ensure data directory exists
+mkdir -p /app/data "$(dirname "$DATABASE_PATH")" "$(dirname "$WHATSAPP_STORE_PATH")"
+
+export PORT="$PORT"
+export BACKEND_PORT="$BACKEND_PORT"
+export BACKEND_URL="http://127.0.0.1:$BACKEND_PORT"
+export DATABASE_PATH="$DATABASE_PATH"
+export WHATSAPP_STORE_PATH="$WHATSAPP_STORE_PATH"
+export CORS_ORIGIN="${CORS_ORIGIN:-http://localhost:$PORT,http://127.0.0.1:$PORT}"
+
+echo "Configuration:"
+echo "- Frontend Port: $PORT"
+echo "- Backend Port:  $BACKEND_PORT"
+echo "- Database Path: $DATABASE_PATH"
+echo "- WhatsApp Store Path: $WHATSAPP_STORE_PATH"
+echo "- Timezone:      $APP_TIMEZONE"
+
+# Graceful termination handler
+cleanup() {
+    echo "Received termination signal, shutting down services gracefully..."
+    if [ -n "$FRONTEND_PID" ]; then
+        kill -TERM "$FRONTEND_PID" 2>/dev/null || true
     fi
-else
-    echo "Database found at $DATABASE_PATH"
-fi
+    if [ -n "$BACKEND_PID" ]; then
+        kill -TERM "$BACKEND_PID" 2>/dev/null || true
+    fi
+    wait
+    echo "Services stopped cleanly."
+    exit 0
+}
 
-# Verify critical environment variables
-if [ -z "$SESSION_SECRET" ] || [ ${#SESSION_SECRET} -lt 32 ]; then
-    echo "WARNING: SESSION_SECRET is not set or too short!"
-    echo "Generating temporary secret for this session..."
-    export SESSION_SECRET=$(openssl rand -hex 32)
-fi
+trap cleanup TERM INT
 
-if [ -z "$APP_BASE_URL" ]; then
-    echo "WARNING: APP_BASE_URL not set, using default"
-    export APP_BASE_URL="http://localhost:$PORT"
-fi
+# 1. Start Go Fiber Backend
+echo "Starting Go Fiber Backend..."
+PORT="$BACKEND_PORT" /app/bin/server &
+BACKEND_PID=$!
 
-echo "=== Configuration ==="
-echo "NODE_ENV: $NODE_ENV"
-echo "PORT: $PORT"
-echo "DATABASE_PATH: $DATABASE_PATH"
-echo "APP_BASE_URL: $APP_BASE_URL"
-echo "APP_TIMEZONE: $APP_TIMEZONE"
-echo "WHATSAPP_AUTH_DIR: $WHATSAPP_AUTH_DIR"
-echo "CORS_ORIGIN: $CORS_ORIGIN"
+# Wait briefly for backend to initialize
+sleep 2
 
-# Start the application
-echo "=== Starting Application ==="
-exec dumb-init node backend/dist/index.js
+# 2. Start Next.js Frontend
+echo "Starting Next.js Frontend on port $PORT..."
+node_modules/.bin/next start frontend -p "$PORT" &
+FRONTEND_PID=$!
+
+echo "Task Reminder is running."
+
+# Wait for any process to exit
+wait -n "$BACKEND_PID" "$FRONTEND_PID"
+cleanup

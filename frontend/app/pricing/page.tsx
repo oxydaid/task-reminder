@@ -12,28 +12,35 @@ import { Dialog } from "@/components/ui/dialog";
 import { Footer } from "@/components/Footer";
 
 export default function PricingPage() {
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [plans, setPlans] = useState<Plan[]>(() => {
+    return api.peekCache<Plan[]>("/plans") || [];
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    return !api.peekCache<Plan[]>("/plans");
+  });
   const [selectedPaidPlan, setSelectedPaidPlan] = useState<Plan | null>(null);
 
   useEffect(() => {
     async function loadPlans() {
       try {
-        const data = await api.get<Plan[]>("/plans");
+        // Cache 10 menit untuk halaman pricing agar tidak perlu fetch ulang setiap navigasi
+        const data = await api.getCached<Plan[]>("/plans", 10 * 60 * 1000);
         if (data && data.length > 0) {
           setPlans(data);
-        } else {
+        } else if (!plans.length) {
           // Fallback defaults
           setPlans(defaultFallbackPlans);
         }
       } catch {
-        setPlans(defaultFallbackPlans);
+        if (!plans.length) {
+          setPlans(defaultFallbackPlans);
+        }
       } finally {
         setLoading(false);
       }
     }
     loadPlans();
-  }, []);
+  }, [plans.length]);
 
   const defaultFallbackPlans: Plan[] = [
     {

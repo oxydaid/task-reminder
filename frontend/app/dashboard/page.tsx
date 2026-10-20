@@ -27,12 +27,17 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<DashboardSummary | null>(() => {
+    return api.peekCache<DashboardSummary>("/dashboard/summary") || null;
+  });
+  const [loading, setLoading] = useState(() => {
+    return !api.peekCache<DashboardSummary>("/dashboard/summary");
+  });
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const data = await api.get<DashboardSummary>("/dashboard/summary");
+      // Menggunakan cache 1 menit untuk instant load, dan refresh di background
+      const data = await api.getCached<DashboardSummary>("/dashboard/summary", 60 * 1000);
       setSummary(data);
     } catch (err: any) {
       toast.error("Gagal memuat ringkasan dashboard");

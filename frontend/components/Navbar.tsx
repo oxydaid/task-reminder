@@ -94,10 +94,13 @@ export function Navbar() {
                 </Link>
               ) : null}
 
-              <div className="hidden sm:flex flex-col items-end text-xs">
-                <span className="font-medium text-[#0A0A0A]">{user.name}</span>
-                <span className="text-[#9C9C9C]">{user.whatsapp_number}</span>
-              </div>
+              {/* Keterangan Akun hanya ditampilkan di dalam rute aplikasi (/dashboard atau /admin), BUKAN di landing page */}
+              {isAppRoute ? (
+                <div className="hidden sm:flex flex-col items-end text-xs">
+                  <span className="font-medium text-[#0A0A0A]">{user.name}</span>
+                  <span className="text-[#9C9C9C]">{user.whatsapp_number}</span>
+                </div>
+              ) : null}
               <Button
                 variant="ghost"
                 size="sm"

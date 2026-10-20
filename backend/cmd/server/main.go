@@ -17,9 +17,12 @@ import (
 func main() {
 	log.Println("=== Starting Task Reminder Backend (Go + Fiber + whatsmeow) ===")
 
-	port := os.Getenv("PORT")
+	port := os.Getenv("BACKEND_PORT")
 	if port == "" {
-		port = "8080"
+		port = os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
 	}
 
 	dbPath := os.Getenv("DATABASE_PATH")

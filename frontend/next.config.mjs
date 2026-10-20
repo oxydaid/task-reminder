@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
-const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:8080";
+const backendPort = process.env.BACKEND_PORT || "8080";
+const backendUrl = process.env.BACKEND_URL || `http://127.0.0.1:${backendPort}`;
 
 const nextConfig = {
   reactStrictMode: true,

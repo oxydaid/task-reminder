@@ -77,6 +77,98 @@ func (s *Scheduler) Stop() {
 	close(s.stop)
 }
 
+type ReminderStage struct {
+	OffsetMinutes int
+	ReminderType  string // "deadline_reminder" or "deadline_overdue"
+	WindowStart   time.Time
+	WindowEnd     time.Time
+	TimeLabel     string
+}
+
+func getStagesForTask(deadline time.Time, configuredOffset int) []ReminderStage {
+	stages := make([]ReminderStage, 0, 4)
+
+	// Pre-deadline stages based on user configuration
+	switch {
+	case configuredOffset >= 4320: // H-3 (3 days before)
+		stages = append(stages,
+			ReminderStage{
+				OffsetMinutes: 4320,
+				ReminderType:  "deadline_reminder",
+				WindowStart:   deadline.Add(-4320 * time.Minute),
+				WindowEnd:     deadline.Add(-2880 * time.Minute),
+				TimeLabel:     "Tersisa 3 hari lagi",
+			},
+			ReminderStage{
+				OffsetMinutes: 2880,
+				ReminderType:  "deadline_reminder",
+				WindowStart:   deadline.Add(-2880 * time.Minute),
+				WindowEnd:     deadline.Add(-1440 * time.Minute),
+				TimeLabel:     "Tersisa 2 hari lagi",
+			},
+			ReminderStage{
+				OffsetMinutes: 1440,
+				ReminderType:  "deadline_reminder",
+				WindowStart:   deadline.Add(-1440 * time.Minute),
+				WindowEnd:     deadline,
+				TimeLabel:     "Tersisa 1 hari lagi (Besok!)",
+			},
+		)
+	case configuredOffset >= 2880: // H-2 (2 days before)
+		stages = append(stages,
+			ReminderStage{
+				OffsetMinutes: 2880,
+				ReminderType:  "deadline_reminder",
+				WindowStart:   deadline.Add(-2880 * time.Minute),
+				WindowEnd:     deadline.Add(-1440 * time.Minute),
+				TimeLabel:     "Tersisa 2 hari lagi",
+			},
+			ReminderStage{
+				OffsetMinutes: 1440,
+				ReminderType:  "deadline_reminder",
+				WindowStart:   deadline.Add(-1440 * time.Minute),
+				WindowEnd:     deadline,
+				TimeLabel:     "Tersisa 1 hari lagi (Besok!)",
+			},
+		)
+	case configuredOffset >= 1440: // H-1 (1 day before, H-2 is NOT sent)
+		stages = append(stages,
+			ReminderStage{
+				OffsetMinutes: 1440,
+				ReminderType:  "deadline_reminder",
+				WindowStart:   deadline.Add(-1440 * time.Minute),
+				WindowEnd:     deadline,
+				TimeLabel:     "Tersisa 1 hari lagi (Besok!)",
+			},
+		)
+	case configuredOffset > 0: // e.g. 720 (12 hours) or custom
+		label := fmt.Sprintf("Tersisa %d menit lagi", configuredOffset)
+		if configuredOffset == 720 {
+			label = "Tersisa 12 jam lagi (Hari ini!)"
+		}
+		stages = append(stages,
+			ReminderStage{
+				OffsetMinutes: configuredOffset,
+				ReminderType:  "deadline_reminder",
+				WindowStart:   deadline.Add(-time.Duration(configuredOffset) * time.Minute),
+				WindowEnd:     deadline,
+				TimeLabel:     label,
+			},
+		)
+	}
+
+	// Post-deadline stage: Tenggat waktu tiba (offset 0)
+	stages = append(stages, ReminderStage{
+		OffsetMinutes: 0,
+		ReminderType:  "deadline_overdue",
+		WindowStart:   deadline,
+		WindowEnd:     deadline.Add(24 * time.Hour),
+		TimeLabel:     "Tenggat Waktu Telah Tiba",
+	})
+
+	return stages
+}
+
 func (s *Scheduler) CheckAndSend() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -138,24 +230,18 @@ func (s *Scheduler) CheckAndSend() {
 	}
 
 	for _, pt := range targets {
-		// Check intervals: primary configured offset (e.g. 2880 = 2 days), and optionally 1440 = 1 day if task is closer
-		offsetsToCheck := []int{pt.OffsetMinutes}
-		if pt.OffsetMinutes > 1440 {
-			offsetsToCheck = append(offsetsToCheck, 1440)
-		}
+		stages := getStagesForTask(pt.DeadlineAt, pt.OffsetMinutes)
 
-		for _, offset := range offsetsToCheck {
-			reminderTime := pt.DeadlineAt.Add(-time.Duration(offset) * time.Minute)
-
-			// If current time is past reminderTime, but not past the actual deadline
-			if nowUTC.After(reminderTime) && nowUTC.Before(pt.DeadlineAt) {
-				s.processSingleReminder(pt.TaskID, pt.UserID, pt.TaskTitle, pt.CourseName, pt.DeadlineAt, offset, pt.UserPhone, pt.UserName)
+		for _, stage := range stages {
+			// Check if current time is within this stage's designated window
+			if (nowUTC.After(stage.WindowStart) || nowUTC.Equal(stage.WindowStart)) && nowUTC.Before(stage.WindowEnd) {
+				s.processSingleReminder(pt.TaskID, pt.UserID, pt.TaskTitle, pt.CourseName, pt.DeadlineAt, stage, pt.UserPhone, pt.UserName)
 			}
 		}
 	}
 }
 
-func (s *Scheduler) processSingleReminder(taskID, userID, taskTitle, courseName string, deadlineAt time.Time, offset int, phone, userName string) {
+func (s *Scheduler) processSingleReminder(taskID, userID, taskTitle, courseName string, deadlineAt time.Time, stage ReminderStage, phone, userName string) {
 	// Check if already sent or attempted too many times
 	var status string
 	var attemptCount int
@@ -164,13 +250,13 @@ func (s *Scheduler) processSingleReminder(taskID, userID, taskTitle, courseName 
 	err := s.db.QueryRow(`
 		SELECT id, status, attempt_count FROM reminder_logs
 		WHERE task_id = ? AND offset_minutes = ?
-	`, taskID, offset).Scan(&logID, &status, &attemptCount)
+	`, taskID, stage.OffsetMinutes).Scan(&logID, &status, &attemptCount)
 
 	nowStr := time.Now().UTC().Format(time.RFC3339)
 
 	if err == nil {
 		if status == "sent" {
-			// Already sent, do nothing!
+			// Already sent for this stage, do nothing!
 			return
 		}
 		if attemptCount >= 3 {
@@ -180,11 +266,11 @@ func (s *Scheduler) processSingleReminder(taskID, userID, taskTitle, courseName 
 	} else if err == sql.ErrNoRows {
 		// Create initial pending record
 		logID = uuid.New().String()
-		scheduledAt := deadlineAt.Add(-time.Duration(offset) * time.Minute).Format(time.RFC3339)
+		scheduledAt := stage.WindowStart.Format(time.RFC3339)
 		_, err = s.db.Exec(`
 			INSERT INTO reminder_logs (id, user_id, task_id, reminder_type, offset_minutes, scheduled_at, status, attempt_count, created_at, updated_at)
-			VALUES (?, ?, ?, 'deadline_reminder', ?, ?, 'pending', 0, ?, ?)
-		`, logID, userID, taskID, offset, scheduledAt, nowStr, nowStr)
+			VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?)
+		`, logID, userID, taskID, stage.ReminderType, stage.OffsetMinutes, scheduledAt, nowStr, nowStr)
 		if err != nil {
 			return
 		}
@@ -213,27 +299,41 @@ func (s *Scheduler) processSingleReminder(taskID, userID, taskTitle, courseName 
 	dateFormatted := fmt.Sprintf("%d %s %d, %02d.%02d WIB",
 		dlWIB.Day(), monthsID[dlWIB.Month()], dlWIB.Year(), dlWIB.Hour(), dlWIB.Minute())
 
-	// Message template as specified in NEW_PRD.md
-	message := fmt.Sprintf(`Halo! 👋 Pengingat tugas kamu:
+	var message string
+	if stage.ReminderType == "deadline_overdue" || stage.OffsetMinutes == 0 {
+		// Tenggat message as requested
+		message = fmt.Sprintf(`Halo! ⚠️ *Peringatan Tenggat Tugas*
 
+Tugas kamu berikut telah mencapai tenggat waktu:
 *Judul:* %s
 *Mata Kuliah:* %s
 *Deadline:* %s
 
-Jangan lupa diselesaikan, ya! 💪`, taskTitle, courseName, dateFormatted)
+Tugas dalam waktu tenggat dan Anda belum mengumpulkan atau belum ceklist pada web! Harap segera diselesaikan. 📋`, taskTitle, courseName, dateFormatted)
+	} else {
+		// Daily / interval reminder message
+		message = fmt.Sprintf(`Halo! 👋 Pengingat tugas kamu:
+
+*Judul:* %s
+*Mata Kuliah:* %s
+*Deadline:* %s
+*Status Waktu:* %s
+
+Jangan lupa diselesaikan dan beri tanda centang pada web, ya! 💪`, taskTitle, courseName, dateFormatted, stage.TimeLabel)
+	}
 
 	attemptCount++
 	sendErr := s.wa.SendMessage(phone, message)
 
 	if sendErr != nil {
-		log.Printf("[Scheduler] Failed sending reminder to %s for task '%s': %v\n", phone, taskTitle, sendErr)
+		log.Printf("[Scheduler] Failed sending reminder to %s for task '%s' (stage: %d): %v\n", phone, taskTitle, stage.OffsetMinutes, sendErr)
 		_, _ = s.db.Exec(`
 			UPDATE reminder_logs
 			SET status = 'failed', attempt_count = ?, last_error = ?, updated_at = ?
 			WHERE id = ?
 		`, attemptCount, sendErr.Error(), nowStr, logID)
 	} else {
-		log.Printf("[Scheduler] Successfully sent reminder to %s for task '%s'\n", phone, taskTitle)
+		log.Printf("[Scheduler] Successfully sent reminder to %s for task '%s' (stage: %d)\n", phone, taskTitle, stage.OffsetMinutes)
 		_, _ = s.db.Exec(`
 			UPDATE reminder_logs
 			SET status = 'sent', attempt_count = ?, sent_at = ?, last_error = '', updated_at = ?

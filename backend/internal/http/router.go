@@ -2,9 +2,11 @@ package http
 
 import (
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"task-reminder/backend/internal/auth"
@@ -74,9 +76,27 @@ func SetupRouter(cfg Config) *fiber.App {
 	// Public routes
 	api.Get("/plans", plansHandler.ListPublic)
 
+	// Rate limiting on sensitive auth endpoints (prevent brute-force)
+	authLimiter := limiter.New(limiter.Config{
+		Max:        15,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"success": false,
+				"error": fiber.Map{
+					"code":    "RATE_LIMIT_EXCEEDED",
+					"message": "Terlalu banyak percobaan. Harap tunggu 1 menit sebelum mencoba kembali.",
+				},
+			})
+		},
+	})
+
 	// Auth routes
 	authGroup := api.Group("/auth")
-	authGroup.Post("/register", func(c *fiber.Ctx) error {
+	authGroup.Post("/register", authLimiter, func(c *fiber.Ctx) error {
 		var req auth.RegisterRequest
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -101,7 +121,7 @@ func SetupRouter(cfg Config) *fiber.App {
 		})
 	})
 
-	authGroup.Post("/login", func(c *fiber.Ctx) error {
+	authGroup.Post("/login", authLimiter, func(c *fiber.Ctx) error {
 		var req auth.LoginRequest
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{

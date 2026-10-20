@@ -57,7 +57,13 @@ sleep 2
 
 # 2. Start Next.js Frontend
 echo "Starting Next.js Frontend on port $PORT..."
-node_modules/.bin/next start frontend -p "$PORT" &
+if [ -x "./node_modules/.bin/next" ]; then
+    ./node_modules/.bin/next start frontend -p "$PORT" &
+elif [ -x "./frontend/node_modules/.bin/next" ]; then
+    ./frontend/node_modules/.bin/next start frontend -p "$PORT" &
+else
+    npx --no-install next start frontend -p "$PORT" &
+fi
 FRONTEND_PID=$!
 
 echo "Task Reminder is running."

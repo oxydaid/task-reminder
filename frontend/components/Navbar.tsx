@@ -13,6 +13,8 @@ export function Navbar() {
   const isAuthPage = pathname === "/login" || pathname === "/register";
   if (isAuthPage) return null;
 
+  const isAppRoute = pathname.startsWith("/dashboard") || pathname.startsWith("/admin");
+
   return (
     <header className="sticky top-0 z-40 w-full h-14 bg-white/85 backdrop-blur-md border-b border-[#E8E8EC]">
       <div className="max-w-6xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
@@ -26,7 +28,7 @@ export function Navbar() {
 
         {/* Desktop Nav Links */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-          {user ? (
+          {user && isAppRoute ? (
             <>
               <Link
                 href="/dashboard"
@@ -78,16 +80,19 @@ export function Navbar() {
         <div className="flex items-center gap-2 sm:gap-3">
           {user ? (
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/dashboard">
-                <Button
-                  variant={pathname.startsWith("/dashboard") ? "outline" : "primary"}
-                  size="sm"
-                  className="h-8 text-xs font-semibold px-2.5 sm:px-3 flex items-center gap-1.5"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span>Dashboard</span>
-                </Button>
-              </Link>
+              {/* Tombol Dashboard hanya tampil di landing/public page (!isAppRoute) baik di mobile maupun desktop */}
+              {!isAppRoute ? (
+                <Link href="/dashboard">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="h-8 text-xs font-semibold px-2.5 sm:px-3 flex items-center gap-1.5"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    <span>Dashboard</span>
+                  </Button>
+                </Link>
+              ) : null}
 
               <div className="hidden sm:flex flex-col items-end text-xs">
                 <span className="font-medium text-[#0A0A0A]">{user.name}</span>

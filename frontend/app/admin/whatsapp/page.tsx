@@ -111,7 +111,7 @@ export default function AdminWhatsAppPage() {
   const isConnected = status?.is_logged_in;
 
   return (
-    <div className="space-y-6 max-w-4xl pb-28 md:pb-8">
+    <div className="space-y-6 pb-28 md:pb-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-[#0A0A0A]">
           WhatsApp Gateway & Pairing
@@ -194,9 +194,9 @@ export default function AdminWhatsAppPage() {
 
       {/* QR Code Scanner Section */}
       {!isConnected ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           {/* QR Display Card */}
-          <Card className="flex flex-col items-center justify-center p-8 text-center min-h-[360px]">
+          <Card className="flex flex-col items-center justify-center p-8 text-center min-h-[380px] h-full">
             {status?.qr_code_image ? (
               <div>
                 <div className="p-3 bg-white border border-[#E8E8EC] rounded-[12px] shadow-sm inline-block">
@@ -231,7 +231,7 @@ export default function AdminWhatsAppPage() {
           </Card>
 
           {/* Instructions Card */}
-          <Card className="flex flex-col justify-between p-6">
+          <Card className="flex flex-col justify-between p-6 h-full">
             <div>
               <h3 className="font-bold text-base text-[#0A0A0A] mb-3 flex items-center gap-2">
                 <Info className="w-4 h-4 text-[#6366F1]" />

@@ -1,8 +1,15 @@
 const path = require("path");
 const fs = require("fs");
 
-// Helper to parse .env file without external dependencies
-function loadEnv() {
+/**
+ * Task Reminder - PM2 Ecosystem Configuration
+ * --------------------------------------------
+ * Menjalankan Backend Go Fiber dan Frontend Next.js secara optimal
+ * dalam 1 perintah: `pm2 start ecosystem.config.js`
+ */
+
+// Parser .env otomatis tanpa membutuhkan library eksternal
+function parseEnv() {
   const envPath = path.join(__dirname, ".env");
   if (!fs.existsSync(envPath)) return {};
   try {
@@ -27,19 +34,25 @@ function loadEnv() {
   }
 }
 
-const fileEnv = loadEnv();
+const envFile = parseEnv();
 
-// Custom port configuration (supports custom ports to prevent conflicts with other services)
-const FRONTEND_PORT = process.env.PORT || fileEnv.PORT || "3000";
-const BACKEND_PORT = process.env.BACKEND_PORT || fileEnv.BACKEND_PORT || "8080";
-const BACKEND_URL = process.env.BACKEND_URL || fileEnv.BACKEND_URL || `http://127.0.0.1:${BACKEND_PORT}`;
+// Custom Port (Fallback ke default jika tidak diisi)
+const FRONTEND_PORT = process.env.PORT || envFile.PORT || "3000";
+const BACKEND_PORT = process.env.BACKEND_PORT || envFile.BACKEND_PORT || "8080";
+const BACKEND_URL = process.env.BACKEND_URL || envFile.BACKEND_URL || `http://127.0.0.1:${BACKEND_PORT}`;
 
-// Binary path detection for Windows vs Linux/macOS
+// Deteksi binary Go (Windows .exe vs Linux/macOS)
 const isWin = process.platform === "win32";
-const backendBinary = isWin ? "./bin/server.exe" : "./bin/server";
+const backendBinary = path.join(__dirname, "bin", isWin ? "server.exe" : "server");
+
+// Path executable Next.js
+const nextBinary = path.join(__dirname, "frontend", "node_modules", "next", "dist", "bin", "next");
 
 module.exports = {
   apps: [
+    // -------------------------------------------------------------------------
+    // 1. Backend Service (Go Fiber + whatsmeow WhatsApp Gateway + SQLite)
+    // -------------------------------------------------------------------------
     {
       name: "task-reminder-backend",
       cwd: __dirname,
@@ -47,30 +60,40 @@ module.exports = {
       exec_mode: "fork",
       instances: 1,
       autorestart: true,
+      exp_backoff_restart_delay: 100,
+      kill_timeout: 5000,
       watch: false,
       max_memory_restart: "250M",
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
       env: {
         NODE_ENV: "production",
         PORT: BACKEND_PORT,
         BACKEND_PORT: BACKEND_PORT,
-        DATABASE_PATH: process.env.DATABASE_PATH || fileEnv.DATABASE_PATH || "./data/task-reminder.sqlite",
-        WHATSAPP_STORE_PATH: process.env.WHATSAPP_STORE_PATH || fileEnv.WHATSAPP_STORE_PATH || "./data/whatsapp.sqlite",
-        APP_TIMEZONE: process.env.APP_TIMEZONE || fileEnv.APP_TIMEZONE || "Asia/Jakarta",
-        CORS_ORIGIN: process.env.CORS_ORIGIN || fileEnv.CORS_ORIGIN || "*",
-        ADMIN_PHONE: process.env.ADMIN_PHONE || fileEnv.ADMIN_PHONE || "6281234567890",
-        ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || fileEnv.ADMIN_PASSWORD || "adminpassword123",
+        DATABASE_PATH: process.env.DATABASE_PATH || envFile.DATABASE_PATH || "./data/task-reminder.sqlite",
+        WHATSAPP_STORE_PATH: process.env.WHATSAPP_STORE_PATH || envFile.WHATSAPP_STORE_PATH || "./data/whatsapp.sqlite",
+        APP_TIMEZONE: process.env.APP_TIMEZONE || envFile.APP_TIMEZONE || "Asia/Jakarta",
+        CORS_ORIGIN: process.env.CORS_ORIGIN || envFile.CORS_ORIGIN || "*",
+        ADMIN_PHONE: process.env.ADMIN_PHONE || envFile.ADMIN_PHONE || "6281234567890",
+        ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || envFile.ADMIN_PASSWORD || "adminpassword123",
       },
     },
+
+    // -------------------------------------------------------------------------
+    // 2. Frontend Service (Next.js 16 Production Server)
+    // -------------------------------------------------------------------------
     {
       name: "task-reminder-frontend",
       cwd: path.join(__dirname, "frontend"),
-      script: "node_modules/next/dist/bin/next",
+      script: nextBinary,
       args: `start -p ${FRONTEND_PORT} -H 0.0.0.0`,
       exec_mode: "fork",
       instances: 1,
       autorestart: true,
+      exp_backoff_restart_delay: 100,
+      kill_timeout: 5000,
       watch: false,
       max_memory_restart: "500M",
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
       env: {
         NODE_ENV: "production",
         PORT: FRONTEND_PORT,

@@ -5,6 +5,9 @@
 
 set -e
 
+# Restrict file creation permissions (owner read/write, group read, other none)
+umask 027
+
 echo "=== Task Reminder Starting (Next.js + Go + whatsmeow) ==="
 
 # Set default values
@@ -23,6 +26,7 @@ export BACKEND_URL="http://127.0.0.1:$BACKEND_PORT"
 export DATABASE_PATH="$DATABASE_PATH"
 export WHATSAPP_STORE_PATH="$WHATSAPP_STORE_PATH"
 export CORS_ORIGIN="${CORS_ORIGIN:-*}"
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=512 --no-deprecation}"
 
 echo "Configuration:"
 echo "- Frontend Port: $PORT"
@@ -30,6 +34,7 @@ echo "- Backend Port:  $BACKEND_PORT"
 echo "- Database Path: $DATABASE_PATH"
 echo "- WhatsApp Store Path: $WHATSAPP_STORE_PATH"
 echo "- Timezone:      $APP_TIMEZONE"
+echo "- Node Options:  $NODE_OPTIONS"
 
 # Graceful termination handler
 cleanup() {

@@ -5,10 +5,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: task-reminder
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
+      - NODE_OPTIONS=--max-old-space-size=512 --no-deprecation
       - PORT=3000
       - BACKEND_PORT=8080
       - DATABASE_PATH=/app/data/task-reminder.sqlite
@@ -19,6 +21,8 @@ services:
       - ADMIN_PASSWORD=adminpassword123
     volumes:
       - app_data:/app/data
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]

@@ -2,13 +2,13 @@ const path = require("path");
 const fs = require("fs");
 
 /**
- * Task Reminder - PM2 Ecosystem Configuration
- * --------------------------------------------
- * Menjalankan Backend Go Fiber dan Frontend Next.js secara optimal
+ * Task Reminder - PM2 Ecosystem Configuration (Production Hardened)
+ * ------------------------------------------------------------------
+ * Menjalankan Backend Go Fiber dan Frontend Next.js secara optimal & aman
  * dalam 1 perintah: `pm2 start ecosystem.config.js`
  */
 
-// Parser .env otomatis tanpa membutuhkan library eksternal
+// Parser .env otomatis tanpa library eksternal
 function parseEnv() {
   const envPath = path.join(__dirname, ".env");
   if (!fs.existsSync(envPath)) return {};
@@ -80,12 +80,14 @@ module.exports = {
 
     // -------------------------------------------------------------------------
     // 2. Frontend Service (Next.js 16 Production Server)
+    // Hardened with memory cap & security flags against memory exhaustion DoS
     // -------------------------------------------------------------------------
     {
       name: "task-reminder-frontend",
       cwd: path.join(__dirname, "frontend"),
       script: nextBinary,
       args: `start -p ${FRONTEND_PORT} -H 0.0.0.0`,
+      node_args: "--max-old-space-size=512 --no-deprecation",
       exec_mode: "fork",
       instances: 1,
       autorestart: true,
@@ -96,6 +98,7 @@ module.exports = {
       log_date_format: "YYYY-MM-DD HH:mm:ss",
       env: {
         NODE_ENV: "production",
+        NODE_OPTIONS: "--max-old-space-size=512 --no-deprecation",
         PORT: FRONTEND_PORT,
         BACKEND_PORT: BACKEND_PORT,
         BACKEND_URL: BACKEND_URL,

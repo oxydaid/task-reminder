@@ -12,11 +12,16 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /build/bin/server ./cm
 
 # -------------------------------------------------------------
 # Stage 2: Build Next.js Frontend
+# Upgraded to node:24-alpine (Patches October 2026 Security Releases:
+# CVE-2026-111497 Brotli RCE, CVE-2026-105483/106069 TLS Hostname Bypasses)
 # -------------------------------------------------------------
-FROM node:20-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 
 WORKDIR /app
-RUN npm install -g pnpm@12.11.2
+
+# Upgrade system packages to latest security patches
+RUN apk update && apk upgrade --no-cache && \
+    npm install -g pnpm@12.11.2
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/
@@ -28,15 +33,18 @@ RUN pnpm --filter @task-reminder/frontend build
 
 # -------------------------------------------------------------
 # Stage 3: Production Runtime
+# Base: node:24-alpine with security hardening & non-root user
 # -------------------------------------------------------------
-FROM node:20-alpine AS production
+FROM node:24-alpine AS production
 
 WORKDIR /app
 
-RUN apk add --no-cache dumb-init sqlite tzdata && \
+# Apply latest Alpine & OpenSSL security patches, install dumb-init & ca-certificates
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache dumb-init sqlite tzdata ca-certificates && \
     npm install -g pnpm@12.11.2
 
-# Create non-root user
+# Create non-root user for principle of least privilege
 RUN addgroup -g 1000 -S appuser && \
     adduser -S -u 1000 -G appuser appuser
 
@@ -60,6 +68,7 @@ RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
 USER appuser
 
 ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=512 --no-deprecation"
 ENV PORT=3000
 ENV BACKEND_PORT=8080
 ENV DATABASE_PATH=/app/data/task-reminder.sqlite

@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"task-reminder/backend/internal/auth"
 	"task-reminder/backend/internal/database"
+	"task-reminder/backend/internal/subscriptions"
 )
 
 type Course struct {
@@ -32,11 +33,12 @@ type CreateCourseRequest struct {
 }
 
 type Handler struct {
-	db *database.DB
+	db     *database.DB
+	subSvc *subscriptions.Service
 }
 
-func NewHandler(db *database.DB) *Handler {
-	return &Handler{db: db}
+func NewHandler(db *database.DB, subSvc *subscriptions.Service) *Handler {
+	return &Handler{db: db, subSvc: subSvc}
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
@@ -129,6 +131,21 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 			"success": false,
 			"error": fiber.Map{"code": "VALIDATION_ERROR", "message": "Nama mata kuliah wajib diisi"},
 		})
+	}
+
+	// Entitlement limit check
+	if h.subSvc != nil {
+		if allowed, msg, err := h.subSvc.CanCreateCourse(user.ID); !allowed {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"success": false,
+				"error":   fiber.Map{"code": "LIMIT_EXCEEDED", "message": msg},
+			})
+		} else if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"error":   fiber.Map{"code": "SERVER_ERROR", "message": "Gagal memeriksa batasan kuota paket"},
+			})
+		}
 	}
 
 	color := strings.TrimSpace(req.Color)

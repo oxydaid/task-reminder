@@ -10,7 +10,9 @@ import (
 	"task-reminder/backend/internal/auth"
 	"task-reminder/backend/internal/database"
 	"task-reminder/backend/internal/http"
+	"task-reminder/backend/internal/outbox"
 	"task-reminder/backend/internal/reminders"
+	"task-reminder/backend/internal/subscriptions"
 	"task-reminder/backend/internal/whatsapp"
 )
 
@@ -35,6 +37,11 @@ func main() {
 		waStorePath = "./data/whatsapp.sqlite"
 	}
 
+	uploadsDir := os.Getenv("UPLOADS_DIR")
+	if uploadsDir == "" {
+		uploadsDir = "./data/uploads"
+	}
+
 	corsOrigin := os.Getenv("CORS_ORIGIN")
 	if corsOrigin == "" {
 		corsOrigin = "*"
@@ -48,10 +55,7 @@ func main() {
 	defer db.Close()
 	log.Printf("SQLite database initialized at: %s", dbPath)
 
-	// 2. Initialize Auth Service
-	authSvc := auth.NewService(db)
-
-	// 3. Initialize WhatsApp Service (whatsmeow)
+	// 2. Initialize WhatsApp Service (whatsmeow)
 	waSvc, err := whatsapp.NewService(waStorePath)
 	if err != nil {
 		log.Printf("[Warning] Failed to initialize whatsmeow store: %v", err)
@@ -68,21 +72,31 @@ func main() {
 		}()
 	}
 
-	// 4. Initialize Scheduler
-	scheduler := reminders.NewScheduler(db, waSvc)
+	// 3. Initialize Outbox and Subscription Services
+	outboxSvc := outbox.NewService(db, waSvc)
+	subSvc := subscriptions.NewService(db, outboxSvc)
+
+	// 4. Initialize Auth Service
+	authSvc := auth.NewService(db, outboxSvc)
+
+	// 5. Initialize Scheduler (Deadline Reminders + Outbox Processor + Subscription Expirations)
+	scheduler := reminders.NewScheduler(db, waSvc, outboxSvc, subSvc)
 	scheduler.Start()
 	defer scheduler.Stop()
 
-	// 5. Setup HTTP Router
+	// 6. Setup HTTP Router
 	app := http.SetupRouter(http.Config{
 		DB:             db,
 		AuthSvc:        authSvc,
 		WASvc:          waSvc,
+		OutboxSvc:      outboxSvc,
+		SubSvc:         subSvc,
 		Scheduler:      scheduler,
 		AllowedOrigins: corsOrigin,
+		UploadsDir:     uploadsDir,
 	})
 
-	// 6. Graceful Shutdown
+	// 7. Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 

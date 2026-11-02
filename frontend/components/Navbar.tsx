@@ -49,6 +49,18 @@ export function Navbar() {
                 Mata Kuliah
               </Link>
               <Link
+                href="/dashboard/subscription"
+                className={`transition-colors ${pathname.startsWith("/dashboard/subscription") ? "text-[#6366F1] font-semibold" : "text-[#6B6B6B] hover:text-[#0A0A0A]"}`}
+              >
+                Langganan
+              </Link>
+              <Link
+                href="/dashboard/transactions"
+                className={`transition-colors ${pathname.startsWith("/dashboard/transactions") ? "text-[#6366F1] font-semibold" : "text-[#6B6B6B] hover:text-[#0A0A0A]"}`}
+              >
+                Transaksi
+              </Link>
+              <Link
                 href="/dashboard/settings"
                 className={`transition-colors ${pathname.startsWith("/dashboard/settings") ? "text-[#6366F1] font-semibold" : "text-[#6B6B6B] hover:text-[#0A0A0A]"}`}
               >

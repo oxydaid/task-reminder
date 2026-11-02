@@ -13,11 +13,13 @@ import {
   ArrowRight,
   Check,
   Calendar,
+  Sparkles,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
-import { DashboardSummary, Task } from "@/types";
+import { api, subscriptionsApi } from "@/lib/api";
+import { DashboardSummary, Task, UserUsage } from "@/types";
 import { formatDateWIB, formatTimeRemaining } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -30,6 +32,9 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(() => {
     return api.peekCache<DashboardSummary>("/dashboard/summary") || null;
   });
+  const [usage, setUsage] = useState<UserUsage | null>(() => {
+    return api.peekCache<UserUsage>("/subscriptions/current") || null;
+  });
   const [loading, setLoading] = useState(() => {
     return !api.peekCache<DashboardSummary>("/dashboard/summary");
   });
@@ -37,8 +42,17 @@ export default function DashboardPage() {
   const fetchDashboardData = useCallback(async () => {
     try {
       // Menggunakan cache 1 menit untuk instant load, dan refresh di background
-      const data = await api.getCached<DashboardSummary>("/dashboard/summary", 60 * 1000);
-      setSummary(data);
+      const [sumData, useData] = await Promise.allSettled([
+        api.getCached<DashboardSummary>("/dashboard/summary", 60 * 1000),
+        subscriptionsApi.getCurrent(),
+      ]);
+
+      if (sumData.status === "fulfilled") {
+        setSummary(sumData.value);
+      }
+      if (useData.status === "fulfilled") {
+        setUsage(useData.value);
+      }
     } catch (err: any) {
       toast.error("Gagal memuat ringkasan dashboard");
     } finally {
@@ -120,6 +134,64 @@ export default function DashboardPage() {
               Lihat Tugas
             </Button>
           </Link>
+        </div>
+      ) : null}
+
+      {/* Subscription Quota Widget */}
+      {usage ? (
+        <div className="mb-6 p-4 rounded-[12px] bg-white border border-[#E8E8EC] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[8px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#6366F1] shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-[#0A0A0A]">
+                  Paket {usage.active_plan.name}
+                </span>
+                <Badge
+                  variant={usage.subscription?.status === "active" ? "success" : "secondary"}
+                  className="text-[10px] py-0"
+                >
+                  {usage.subscription?.subscription_type === "trial" ? "Trial" : usage.subscription?.status || "Active"}
+                </Badge>
+              </div>
+              <div className="text-xs text-[#6B6B6B] mt-0.5 flex items-center gap-3 flex-wrap">
+                <span>
+                  Matkul: <strong>{usage.course_count}</strong>/{usage.course_limit}
+                </span>
+                <span>•</span>
+                <span>
+                  Tugas: <strong>{usage.task_count}</strong>/{usage.task_limit}
+                </span>
+                <span>•</span>
+                <span>
+                  Notif WA: <strong>{usage.notification_count}</strong>/{usage.notification_limit}
+                </span>
+                {usage.days_remaining > 0 ? (
+                  <>
+                    <span>•</span>
+                    <span className="text-[#6366F1] font-medium">
+                      Sisa {usage.days_remaining} hari
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/dashboard/subscription">
+              <Button variant="outline" size="xs" className="h-8 text-xs">
+                Detail Kuota
+              </Button>
+            </Link>
+            <Link href="/pricing">
+              <Button variant="primary" size="xs" className="h-8 text-xs font-semibold">
+                Upgrade Paket
+              </Button>
+            </Link>
+          </div>
         </div>
       ) : null}
 

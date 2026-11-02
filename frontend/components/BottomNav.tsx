@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CheckSquare, BookOpen, Settings, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, CheckSquare, BookOpen, Settings, ShieldAlert, CreditCard } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export function BottomNav() {
@@ -18,6 +18,7 @@ export function BottomNav() {
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard, active: pathname === "/dashboard" },
     { href: "/dashboard/tasks", label: "Tugas", icon: CheckSquare, active: pathname.startsWith("/dashboard/tasks") },
     { href: "/dashboard/courses", label: "Kuliah", icon: BookOpen, active: pathname.startsWith("/dashboard/courses") },
+    { href: "/dashboard/subscription", label: "Paket", icon: CreditCard, active: pathname.startsWith("/dashboard/subscription") },
     { href: "/dashboard/settings", label: "Setelan", icon: Settings, active: pathname.startsWith("/dashboard/settings") },
   ];
 

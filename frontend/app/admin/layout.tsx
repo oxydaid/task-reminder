@@ -3,7 +3,17 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ShieldAlert, Users, Layers, QrCode, LayoutDashboard } from "lucide-react";
+import {
+  ShieldAlert,
+  Users,
+  Layers,
+  QrCode,
+  LayoutDashboard,
+  ReceiptText,
+  CreditCard,
+  Bell,
+  Sparkles,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -27,9 +37,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { href: "/admin", label: "Ringkasan", icon: LayoutDashboard },
-    { href: "/admin/users", label: "Kelola Pengguna", icon: Users },
-    { href: "/admin/plans", label: "Manage Plans", icon: Layers },
-    { href: "/admin/whatsapp", label: "WhatsApp Gateway", icon: QrCode },
+    { href: "/admin/transactions", label: "Transaksi", icon: ReceiptText },
+    { href: "/admin/subscriptions", label: "Langganan", icon: Sparkles },
+    { href: "/admin/payment-methods", label: "Metode Bayar", icon: CreditCard },
+    { href: "/admin/users", label: "Pengguna", icon: Users },
+    { href: "/admin/plans", label: "Paket", icon: Layers },
+    { href: "/admin/whatsapp", label: "WhatsApp", icon: QrCode },
+    { href: "/admin/settings", label: "Notifikasi", icon: Bell },
   ];
 
   return (

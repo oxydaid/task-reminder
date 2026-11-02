@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"task-reminder/backend/internal/auth"
 	"task-reminder/backend/internal/database"
+	"task-reminder/backend/internal/subscriptions"
 )
 
 type Task struct {
@@ -52,11 +53,12 @@ type UpdateTaskRequest struct {
 }
 
 type Handler struct {
-	db *database.DB
+	db     *database.DB
+	subSvc *subscriptions.Service
 }
 
-func NewHandler(db *database.DB) *Handler {
-	return &Handler{db: db}
+func NewHandler(db *database.DB, subSvc *subscriptions.Service) *Handler {
+	return &Handler{db: db, subSvc: subSvc}
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
@@ -216,6 +218,21 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		})
 	}
 
+	// Entitlement task count limit check
+	if h.subSvc != nil {
+		if allowed, msg, err := h.subSvc.CanCreateTask(user.ID); !allowed {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"success": false,
+				"error":   fiber.Map{"code": "LIMIT_EXCEEDED", "message": msg},
+			})
+		} else if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"error":   fiber.Map{"code": "SERVER_ERROR", "message": "Gagal memeriksa batasan kuota tugas"},
+			})
+		}
+	}
+
 	deadlineStr := strings.TrimSpace(req.DeadlineAt)
 	if deadlineStr == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -264,6 +281,20 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	reminderEnabled := 1
 	if req.ReminderEnabled != nil && !*req.ReminderEnabled {
 		reminderEnabled = 0
+	}
+
+	if reminderEnabled == 1 && h.subSvc != nil {
+		if allowed, msg, err := h.subSvc.CanEnableReminder(user.ID, ""); !allowed {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"success": false,
+				"error":   fiber.Map{"code": "NOTIFICATION_LIMIT_EXCEEDED", "message": msg},
+			})
+		} else if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"error":   fiber.Map{"code": "SERVER_ERROR", "message": "Gagal memeriksa kuota notifikasi"},
+			})
+		}
 	}
 
 	reminderOffset := 2880 // 2 days default (H-2)
@@ -365,6 +396,15 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	reminderEnabled := 1
 	if req.ReminderEnabled != nil && !*req.ReminderEnabled {
 		reminderEnabled = 0
+	}
+
+	if reminderEnabled == 1 && h.subSvc != nil {
+		if allowed, msg, _ := h.subSvc.CanEnableReminder(user.ID, id); !allowed {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"success": false,
+				"error":   fiber.Map{"code": "NOTIFICATION_LIMIT_EXCEEDED", "message": msg},
+			})
+		}
 	}
 
 	reminderOffset := 2880

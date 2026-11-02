@@ -1,3 +1,13 @@
+import {
+  AdminNotificationSettings,
+  PaymentMethod,
+  Plan,
+  Subscription,
+  Transaction,
+  User,
+  UserUsage,
+} from "@/types";
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -9,7 +19,7 @@ export interface ApiResponse<T = any> {
   };
 }
 
-class ApiError extends Error {
+export class ApiError extends Error {
   code: string;
   status: number;
   details?: any;
@@ -24,7 +34,7 @@ class ApiError extends Error {
 }
 
 export interface ApiRequestOptions extends RequestInit {
-  cacheTtl?: number; // Cache validity duration in milliseconds
+  cacheTtl?: number;
   skipCache?: boolean;
 }
 
@@ -33,7 +43,6 @@ interface CacheItem<T = any> {
   timestamp: number;
 }
 
-// In-memory client cache for lightning-fast page transitions without repeated fetching
 const memoryCache = new Map<string, CacheItem>();
 
 function invalidateRelatedCache(path: string) {
@@ -43,13 +52,23 @@ function invalidateRelatedCache(path: string) {
   if (path.includes("/tasks")) {
     api.clearCache("/tasks");
     api.clearCache("/dashboard/summary");
+    api.clearCache("/subscriptions/current");
   }
   if (path.includes("/courses")) {
     api.clearCache("/courses");
     api.clearCache("/dashboard/summary");
+    api.clearCache("/subscriptions/current");
   }
   if (path.includes("/settings")) {
     api.clearCache("/settings");
+  }
+  if (path.includes("/subscriptions") || path.includes("/transactions")) {
+    api.clearCache("/subscriptions");
+    api.clearCache("/transactions");
+    api.clearCache("/dashboard/summary");
+  }
+  if (path.includes("/payment-methods")) {
+    api.clearCache("/payment-methods");
   }
 }
 
@@ -166,4 +185,90 @@ export const api = {
     invalidateRelatedCache(path);
     return request<T>(path, { ...options, method: "DELETE" });
   },
+};
+
+// Strongly typed domain services
+export const subscriptionsApi = {
+  getCurrent: () => api.get<UserUsage>("/subscriptions/current"),
+  getHistory: () => api.get<any[]>("/subscriptions/history"),
+  getDowngradeStatus: () => api.get<{
+    plan_name: string;
+    notification_limit: number;
+    active_reminder_count: number;
+    is_over_limit: boolean;
+    tasks: { id: string; title: string; reminder_enabled: boolean; deadline_at: string }[];
+  }>("/subscriptions/downgrade-status"),
+  selectActiveReminders: (taskIds: string[]) =>
+    api.post("/subscriptions/select-active", { task_ids: taskIds }),
+};
+
+export const transactionsApi = {
+  checkout: (data: { plan_id: string; payment_method_id: string; idempotency_key?: string }) =>
+    api.post<{ id: string; code: string; total_amount: number; status: string; expires_at: string }>(
+      "/transactions/checkout",
+      data
+    ),
+  list: () => api.get<Transaction[]>("/transactions"),
+  getById: (id: string) => api.get<Transaction>(`/transactions/${id}`),
+  uploadProof: (
+    id: string,
+    data: { file_path: string; file_name: string; file_size: number; mime_type: string; notes?: string }
+  ) => api.post(`/transactions/${id}/proof`, data),
+  cancel: (id: string) => api.post(`/transactions/${id}/cancel`),
+};
+
+export const paymentMethodsApi = {
+  listPublic: () => api.getCached<PaymentMethod[]>("/payment-methods", 60 * 1000),
+  listAdmin: () => api.get<PaymentMethod[]>("/admin/payment-methods"),
+  create: (data: Partial<PaymentMethod>) => api.post("/admin/payment-methods", data),
+  update: (id: string, data: Partial<PaymentMethod>) => api.put(`/admin/payment-methods/${id}`, data),
+  delete: (id: string) => api.delete(`/admin/payment-methods/${id}`),
+};
+
+export const uploadsApi = {
+  uploadProof: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<{ url: string; file_name: string; file_size: number }>("/uploads/proof", formData);
+  },
+  uploadQRIS: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<{ url: string; file_name: string; file_size: number }>("/admin/payment-methods/upload-qris", formData);
+  },
+};
+
+export const adminSubscriptionsApi = {
+  list: (params?: { status?: string; plan_id?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set("status", params.status);
+    if (params?.plan_id) query.set("plan_id", params.plan_id);
+    const qs = query.toString();
+    return api.get<any[]>(`/admin/subscriptions${qs ? `?${qs}` : ""}`);
+  },
+  grantTrial: (userId: string, data: { plan_id: string; duration_days?: number; reason?: string }) =>
+    api.post(`/admin/users/${userId}/trial`, data),
+  activate: (userId: string, data: { plan_id: string; duration_months?: number; reason?: string }) =>
+    api.post(`/admin/users/${userId}/subscription/activate`, data),
+  cancel: (userId: string, data?: { reason?: string }) =>
+    api.post(`/admin/users/${userId}/subscription/cancel`, data),
+};
+
+export const adminTransactionsApi = {
+  list: (params?: { status?: string; search?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set("status", params.status);
+    if (params?.search) query.set("search", params.search);
+    const qs = query.toString();
+    return api.get<Transaction[]>(`/admin/transactions${qs ? `?${qs}` : ""}`);
+  },
+  getById: (id: string) => api.get<Transaction>(`/admin/transactions/${id}`),
+  approve: (id: string, data?: { notes?: string }) => api.post(`/admin/transactions/${id}/approve`, data),
+  reject: (id: string, data: { reason: string }) => api.post(`/admin/transactions/${id}/reject`, data),
+};
+
+export const adminSettingsApi = {
+  getNotifications: () => api.get<AdminNotificationSettings>("/admin/settings/notifications"),
+  updateNotifications: (data: { receive_transaction_notification: boolean; receive_payment_proof_notification: boolean }) =>
+    api.put("/admin/settings/notifications", data),
 };

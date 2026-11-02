@@ -2,33 +2,33 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Info, ShieldCheck, Sparkles, HelpCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, ShieldCheck, Sparkles, HelpCircle, ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { Plan } from "@/types";
 import { formatRupiah } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog } from "@/components/ui/dialog";
 import { Footer } from "@/components/Footer";
+import { useAuth } from "@/context/AuthContext";
 
 export default function PricingPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [plans, setPlans] = useState<Plan[]>(() => {
     return api.peekCache<Plan[]>("/plans") || [];
   });
   const [loading, setLoading] = useState<boolean>(() => {
     return !api.peekCache<Plan[]>("/plans");
   });
-  const [selectedPaidPlan, setSelectedPaidPlan] = useState<Plan | null>(null);
 
   useEffect(() => {
     async function loadPlans() {
       try {
-        // Cache 10 menit untuk halaman pricing agar tidak perlu fetch ulang setiap navigasi
-        const data = await api.getCached<Plan[]>("/plans", 10 * 60 * 1000);
+        const data = await api.getCached<Plan[]>("/plans", 5 * 60 * 1000);
         if (data && data.length > 0) {
           setPlans(data);
         } else if (!plans.length) {
-          // Fallback defaults
           setPlans(defaultFallbackPlans);
         }
       } catch {
@@ -52,7 +52,9 @@ export default function PricingPage() {
       billing_period: "monthly",
       course_limit: 2,
       task_limit: 4,
+      notification_limit: 3,
       is_active: true,
+      sort_order: 1,
       created_at: "",
       updated_at: "",
     },
@@ -65,7 +67,9 @@ export default function PricingPage() {
       billing_period: "monthly",
       course_limit: 4,
       task_limit: 6,
+      notification_limit: 5,
       is_active: true,
+      sort_order: 2,
       created_at: "",
       updated_at: "",
     },
@@ -78,7 +82,9 @@ export default function PricingPage() {
       billing_period: "monthly",
       course_limit: 6,
       task_limit: 10,
+      notification_limit: 7,
       is_active: true,
+      sort_order: 3,
       created_at: "",
       updated_at: "",
     },
@@ -91,11 +97,29 @@ export default function PricingPage() {
       billing_period: "monthly",
       course_limit: 15,
       task_limit: 30,
+      notification_limit: 10,
       is_active: true,
+      sort_order: 4,
       created_at: "",
       updated_at: "",
     },
   ];
+
+  const handleSelectPlan = (plan: Plan) => {
+    if (plan.price === 0) {
+      if (user) {
+        router.push("/dashboard");
+      } else {
+        router.push("/register");
+      }
+    } else {
+      if (user) {
+        router.push(`/checkout?plan=${plan.id}`);
+      } else {
+        router.push(`/login?redirect=/checkout?plan=${plan.id}`);
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
@@ -109,7 +133,7 @@ export default function PricingPage() {
             Harga Terjangkau untuk Mahasiswa
           </h1>
           <p className="mt-4 text-sm sm:text-base text-[#6B6B6B]">
-            Pilih paket yang sesuai dengan jumlah mata kuliah dan intensitas tugas Anda di tiap semester.
+            Pilih paket yang sesuai dengan jumlah mata kuliah dan intensitas tugas Anda di tiap semester. Bayar mudah via Transfer Bank & QRIS.
           </p>
         </div>
 
@@ -122,7 +146,7 @@ export default function PricingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {plans.map((p) => {
               const isFree = p.price === 0;
-              const isPopular = p.slug === "basic";
+              const isPopular = p.slug === "sibuk" || p.slug === "basic";
 
               return (
                 <div
@@ -130,7 +154,7 @@ export default function PricingPage() {
                   className={`relative flex flex-col justify-between bg-white rounded-[12px] p-6 border transition-all ${
                     isPopular
                       ? "border-[#6366F1] shadow-md ring-1 ring-[#6366F1]/30"
-                      : "border-[#E8E8EC] shadow-xs"
+                      : "border-[#E8E8EC] shadow-xs hover:border-zinc-300"
                   }`}
                 >
                   {isPopular ? (
@@ -173,29 +197,36 @@ export default function PricingPage() {
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>Pengingat WhatsApp H-2 Otomatis</span>
+                        <span>Hingga <strong>{p.notification_limit || 3}</strong> Pengingat WhatsApp Aktif</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>Status Overdue Real-time</span>
+                        <span>Notifikasi Tenggat H-2, H-1 & Hari H</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Tersimpan Aman Tanpa Hapus Data</span>
                       </li>
                     </ul>
                   </div>
 
                   <div className="mt-8">
                     {isFree ? (
-                      <Link href="/register" className="block w-full">
-                        <Button variant="secondary" className="w-full">
-                          Mulai Gratis
-                        </Button>
-                      </Link>
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        onClick={() => handleSelectPlan(p)}
+                      >
+                        {user ? "Buka Dashboard" : "Mulai Gratis"}
+                      </Button>
                     ) : (
                       <Button
                         variant={isPopular ? "primary" : "outline"}
-                        className="w-full"
-                        onClick={() => setSelectedPaidPlan(p)}
+                        className="w-full flex items-center justify-center gap-1.5"
+                        onClick={() => handleSelectPlan(p)}
                       >
-                        Pilih Paket
+                        <span>Pilih Paket</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     )}
                   </div>
@@ -205,50 +236,29 @@ export default function PricingPage() {
           </div>
         )}
 
-        {/* Feature Notice */}
-        <div className="mt-14 p-5 rounded-[12px] bg-white border border-[#E8E8EC] max-w-2xl mx-auto flex items-start gap-3">
-          <Info className="w-5 h-5 text-[#6366F1] shrink-0 mt-0.5" />
-          <div className="text-xs text-[#6B6B6B] leading-relaxed">
-            <strong className="text-[#0A0A0A]">Informasi Pembelian:</strong> Selama masa pengembangan, seluruh pengguna baru dapat menikmati aplikasi secara gratis tanpa batasan kuota. Fitur langganan berbayar akan dibuka ketika gerbang pembayaran resmi diaktifkan.
+        {/* FAQ & Manual Payment Notice */}
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="p-5 rounded-[12px] bg-white border border-[#E8E8EC] shadow-xs">
+            <div className="flex items-center gap-2 mb-2 font-semibold text-sm text-[#0A0A0A]">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Metode Pembayaran Manual</span>
+            </div>
+            <p className="text-xs text-[#6B6B6B] leading-relaxed">
+              Mendukung Transfer Bank (BCA, Mandiri) dan QRIS All Payment (GoPay, OVO, Dana, ShopeePay, Mobile Banking). Setelah transfer, cukup unggah bukti pembayaran dan Admin akan memverifikasi langganan Anda secara instan.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-[12px] bg-white border border-[#E8E8EC] shadow-xs">
+            <div className="flex items-center gap-2 mb-2 font-semibold text-sm text-[#0A0A0A]">
+              <HelpCircle className="w-4 h-4 text-[#6366F1]" />
+              <span>Bagaimana jika paket berakhir?</span>
+            </div>
+            <p className="text-xs text-[#6B6B6B] leading-relaxed">
+              Jika masa aktif berakhir, akun Anda otomatis turun ke paket Free tanpa ada data mata kuliah maupun tugas yang dihapus! Anda tetap dapat melihat seluruh riwayat tugas Anda.
+            </p>
           </div>
         </div>
       </div>
-
-      {/* Paid Plan Info Dialog */}
-      <Dialog
-        open={Boolean(selectedPaidPlan)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedPaidPlan(null);
-        }}
-        title={`Paket ${selectedPaidPlan?.name || ""}`}
-        description="Informasi ketersediaan paket"
-      >
-        <div className="space-y-4 text-xs text-[#6B6B6B]">
-          <div className="p-4 rounded-[8px] bg-indigo-50/60 border border-indigo-100 text-[#0A0A0A]">
-            <p className="font-semibold text-sm text-[#6366F1] mb-1">
-              Harga: {selectedPaidPlan ? formatRupiah(selectedPaidPlan.price) : 0} / bulan
-            </p>
-            <p>
-              Paket ini mencakup kuota hingga <strong>{selectedPaidPlan?.course_limit} mata kuliah</strong> dan <strong>{selectedPaidPlan?.task_limit} tugas aktif</strong>.
-            </p>
-          </div>
-
-          <p className="leading-relaxed">
-            Sistem pembayaran mandiri untuk paket berbayar saat ini belum dibuka untuk umum. Anda dapat mendaftar akun sekarang dan menikmati seluruh fitur Task Reminder secara gratis!
-          </p>
-
-          <div className="pt-2 flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setSelectedPaidPlan(null)}>
-              Tutup
-            </Button>
-            <Link href="/register" onClick={() => setSelectedPaidPlan(null)}>
-              <Button size="sm">
-                Daftar Akun Gratis Sekarang
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </Dialog>
 
       <Footer />
     </div>

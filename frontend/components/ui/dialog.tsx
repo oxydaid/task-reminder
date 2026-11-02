@@ -74,6 +74,18 @@ export function Dialog({
   );
 }
 
+export function DialogContent({
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn("space-y-4", className)} {...props}>
+      {children}
+    </div>
+  );
+}
+
 export function DialogHeader({
   className,
   ...props

@@ -55,3 +55,15 @@ export function formatTimeRemaining(deadlineStr: string): { label: string; isPas
   const days = Math.floor(hours / 24);
   return { label: `${days} hari lagi`, isPast: false };
 }
+
+export function formatDateOnly(dateStr: string): string {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(date);
+}

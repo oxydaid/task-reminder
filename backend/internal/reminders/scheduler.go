@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"task-reminder/backend/internal/auth"
 	"task-reminder/backend/internal/database"
+	"task-reminder/backend/internal/outbox"
+	"task-reminder/backend/internal/subscriptions"
 	"task-reminder/backend/internal/whatsapp"
 )
 
@@ -30,42 +32,67 @@ type ReminderLog struct {
 }
 
 type Scheduler struct {
-	db     *database.DB
-	wa     *whatsapp.Service
-	loc    *time.Location
-	ticker *time.Ticker
-	stop   chan struct{}
-	mu     sync.Mutex
+	db        *database.DB
+	wa        *whatsapp.Service
+	outbox    *outbox.Service
+	subSvc    *subscriptions.Service
+	loc       *time.Location
+	ticker    *time.Ticker
+	subTicker *time.Ticker
+	stop      chan struct{}
+	mu        sync.Mutex
 }
 
-func NewScheduler(db *database.DB, wa *whatsapp.Service) *Scheduler {
+func NewScheduler(db *database.DB, wa *whatsapp.Service, outbox *outbox.Service, subSvc *subscriptions.Service) *Scheduler {
 	loc, err := time.LoadLocation("Asia/Jakarta")
 	if err != nil {
 		loc = time.FixedZone("WIB", 7*3600)
 	}
 
 	return &Scheduler{
-		db:   db,
-		wa:   wa,
-		loc:  loc,
-		stop: make(chan struct{}),
+		db:     db,
+		wa:     wa,
+		outbox: outbox,
+		subSvc: subSvc,
+		loc:    loc,
+		stop:   make(chan struct{}),
 	}
 }
 
 func (s *Scheduler) Start() {
 	s.ticker = time.NewTicker(1 * time.Minute)
-	log.Println("[Scheduler] Started checking deadline reminders every 1 minute")
+	s.subTicker = time.NewTicker(5 * time.Minute)
+	log.Println("[Scheduler] Started background scheduler for reminders, outbox, and subscriptions")
 
-	// Run initial check
+	// Run initial checks
 	go s.CheckAndSend()
+	if s.outbox != nil {
+		go s.outbox.ProcessPending()
+	}
+	if s.subSvc != nil {
+		go s.subSvc.CheckExpirations()
+	}
 
 	go func() {
 		for {
 			select {
 			case <-s.ticker.C:
 				s.CheckAndSend()
+				if s.outbox != nil {
+					s.outbox.ProcessPending()
+				}
+				// Expire pending transactions past their expiration time
+				nowStr := time.Now().UTC().Format(time.RFC3339)
+				_, _ = s.db.Exec("UPDATE transactions SET status = 'expired', updated_at = ? WHERE status = 'pending_payment' AND expires_at <= ?", nowStr, nowStr)
+
+			case <-s.subTicker.C:
+				if s.subSvc != nil {
+					s.subSvc.CheckExpirations()
+				}
+
 			case <-s.stop:
 				s.ticker.Stop()
+				s.subTicker.Stop()
 				log.Println("[Scheduler] Stopped")
 				return
 			}

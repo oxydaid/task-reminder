@@ -6,6 +6,8 @@ export interface User {
   whatsapp_number: string;
   role: UserRole;
   is_active: boolean;
+  is_verified?: boolean;
+  verified_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -84,8 +86,123 @@ export interface Plan {
   billing_period: string;
   course_limit: number;
   task_limit: number;
+  notification_limit: number;
   is_active: boolean;
+  sort_order: number;
   created_at: string;
+  updated_at: string;
+}
+
+export type SubscriptionStatus = "active" | "expired" | "cancelled" | "pending" | "trialing";
+export type SubscriptionType = "paid" | "trial" | "free";
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  plan?: Plan;
+  status: SubscriptionStatus;
+  subscription_type: SubscriptionType;
+  started_at: string;
+  expires_at?: string | null;
+  activated_at: string;
+  cancelled_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserUsage {
+  active_plan: Plan;
+  subscription?: Subscription;
+  course_count: number;
+  course_limit: number;
+  task_count: number;
+  task_limit: number;
+  notification_count: number;
+  notification_limit: number;
+  is_over_limit: boolean;
+  days_remaining: number;
+}
+
+export type PaymentMethodType = "bank_transfer" | "qris";
+export type FeeType = "fixed" | "percentage" | "mixed";
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  type: PaymentMethodType;
+  bank_name?: string;
+  account_name?: string;
+  account_number?: string;
+  qris_image_url?: string;
+  description?: string;
+  fee_type: FeeType;
+  fee_percentage: number;
+  fee_fixed: number;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TransactionStatus =
+  | "pending_payment"
+  | "waiting_verification"
+  | "paid"
+  | "rejected"
+  | "cancelled"
+  | "expired";
+
+export interface PaymentProof {
+  id: string;
+  transaction_id: string;
+  user_id: string;
+  file_path: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  source: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface Transaction {
+  id: string;
+  code: string;
+  user_id: string;
+  user_name?: string;
+  user_phone?: string;
+  plan_id: string;
+  payment_method_id: string;
+  plan_name: string;
+  plan_price: number;
+  plan_course_limit: number;
+  plan_task_limit: number;
+  plan_notification_limit: number;
+  payment_method_name: string;
+  payment_method_type: PaymentMethodType;
+  payment_method_details: string;
+  fee_type: FeeType;
+  fee_percentage: number;
+  fee_fixed: number;
+  fee_amount: number;
+  subtotal: number;
+  total_amount: number;
+  status: TransactionStatus;
+  expires_at: string;
+  paid_at?: string | null;
+  verified_by?: string;
+  admin_notes?: string;
+  rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
+  proofs?: PaymentProof[];
+}
+
+export interface AdminNotificationSettings {
+  admin_id: string;
+  receive_transaction_notification: boolean;
+  receive_payment_proof_notification: boolean;
   updated_at: string;
 }
 

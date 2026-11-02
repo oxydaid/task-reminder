@@ -93,14 +93,15 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 	id := c.Params("id")
 
 	var u UserItem
-	var activeInt int
+	var activeInt, verifiedInt int
+	var verifiedAt sql.NullString
 	err := h.db.QueryRow(`
-		SELECT u.id, u.name, u.whatsapp_number, u.role, u.is_active, u.created_at, u.updated_at,
+		SELECT u.id, u.name, u.whatsapp_number, u.role, u.is_active, u.is_verified, u.verified_at, u.created_at, u.updated_at,
 		       (SELECT COUNT(*) FROM tasks t WHERE t.user_id = u.id) as task_count,
 		       (SELECT COUNT(*) FROM courses cr WHERE cr.user_id = u.id) as course_count
 		FROM users u
 		WHERE u.id = ?
-	`, id).Scan(&u.ID, &u.Name, &u.WhatsAppNumber, &u.Role, &activeInt, &u.CreatedAt, &u.UpdatedAt, &u.TaskCount, &u.CourseCount)
+	`, id).Scan(&u.ID, &u.Name, &u.WhatsAppNumber, &u.Role, &activeInt, &verifiedInt, &verifiedAt, &u.CreatedAt, &u.UpdatedAt, &u.TaskCount, &u.CourseCount)
 
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -110,9 +111,102 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 	}
 
 	u.IsActive = activeInt == 1
+
+	// 1. Fetch current subscription
+	var subMap fiber.Map
+	var sID, sPlanID, sStatus, sType, sStartedAt string
+	var sPlanName string
+	var sExpAt sql.NullString
+	err = h.db.QueryRow(`
+		SELECT s.id, s.plan_id, p.name, s.status, s.subscription_type, s.started_at, s.expires_at
+		FROM subscriptions s
+		JOIN plans p ON s.plan_id = p.id
+		WHERE s.user_id = ? AND s.status IN ('active', 'trialing')
+		ORDER BY s.created_at DESC LIMIT 1
+	`, id).Scan(&sID, &sPlanID, &sPlanName, &sStatus, &sType, &sStartedAt, &sExpAt)
+	if err == nil {
+		var expStr *string
+		if sExpAt.Valid {
+			expStr = &sExpAt.String
+		}
+		subMap = fiber.Map{
+			"id":                sID,
+			"plan_id":           sPlanID,
+			"plan_name":         sPlanName,
+			"status":            sStatus,
+			"subscription_type": sType,
+			"started_at":        sStartedAt,
+			"expires_at":        expStr,
+		}
+	}
+
+	// 2. Fetch subscription history
+	subHistory := make([]fiber.Map, 0)
+	subRows, err := h.db.Query(`
+		SELECT s.id, p.name, s.status, s.subscription_type, s.started_at, s.expires_at, s.created_at
+		FROM subscriptions s
+		JOIN plans p ON s.plan_id = p.id
+		WHERE s.user_id = ?
+		ORDER BY s.created_at DESC LIMIT 10
+	`, id)
+	if err == nil {
+		defer subRows.Close()
+		for subRows.Next() {
+			var hID, pName, status, sType, startAt, createAt string
+			var expAt sql.NullString
+			if err := subRows.Scan(&hID, &pName, &status, &sType, &startAt, &expAt, &createAt); err == nil {
+				var expStr *string
+				if expAt.Valid {
+					expStr = &expAt.String
+				}
+				subHistory = append(subHistory, fiber.Map{
+					"id":                hID,
+					"plan_name":         pName,
+					"status":            status,
+					"subscription_type": sType,
+					"started_at":        startAt,
+					"expires_at":        expStr,
+					"created_at":        createAt,
+				})
+			}
+		}
+	}
+
+	// 3. Fetch transaction history
+	txHistory := make([]fiber.Map, 0)
+	txRows, err := h.db.Query(`
+		SELECT id, code, plan_name, payment_method_name, total_amount, status, created_at
+		FROM transactions
+		WHERE user_id = ?
+		ORDER BY created_at DESC LIMIT 10
+	`, id)
+	if err == nil {
+		defer txRows.Close()
+		for txRows.Next() {
+			var tID, code, pName, pmName, status, createAt string
+			var total int
+			if err := txRows.Scan(&tID, &code, &pName, &pmName, &total, &status, &createAt); err == nil {
+				txHistory = append(txHistory, fiber.Map{
+					"id":                  tID,
+					"code":                code,
+					"plan_name":           pName,
+					"payment_method_name": pmName,
+					"total_amount":        total,
+					"status":              status,
+					"created_at":          createAt,
+				})
+			}
+		}
+	}
+
 	return c.JSON(fiber.Map{
 		"success": true,
-		"data":    u,
+		"data": fiber.Map{
+			"user":                 u,
+			"current_subscription": subMap,
+			"subscription_history": subHistory,
+			"transaction_history":  txHistory,
+		},
 	})
 }
 

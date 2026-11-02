@@ -18,12 +18,13 @@ import {
   X,
   RotateCcw,
   Filter,
+  Gift,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
-import { AdminUserItem } from "@/types";
-import { formatDateWIB } from "@/lib/utils";
+import { adminSubscriptionsApi, api } from "@/lib/api";
+import { AdminUserItem, Plan } from "@/types";
+import { formatDateWIB, formatRupiah } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -63,6 +64,14 @@ export default function AdminUsersPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUserItem | null>(null);
   const [deletingUser, setDeletingUser] = useState<AdminUserItem | null>(null);
+
+  // Quick Trial Modal states
+  const [trialUser, setTrialUser] = useState<AdminUserItem | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [trialPlanId, setTrialPlanId] = useState<string>("");
+  const [trialDurationDays, setTrialDurationDays] = useState<number>(7);
+  const [trialReason, setTrialReason] = useState<string>("");
+  const [grantingTrial, setGrantingTrial] = useState<boolean>(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -238,6 +247,45 @@ export default function AdminUsersPage() {
       loadUsers();
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus pengguna");
+    }
+  };
+
+  const handleOpenTrial = async (targetUser: AdminUserItem) => {
+    try {
+      if (plans.length === 0) {
+        const pData = await api.get<Plan[]>("/admin/plans");
+        setPlans(pData || []);
+        const paidPlans = (pData || []).filter((p) => p.price > 0);
+        setTrialPlanId(paidPlans[0]?.id || pData?.[0]?.id || "");
+      } else {
+        const paidPlans = plans.filter((p) => p.price > 0);
+        setTrialPlanId(paidPlans[0]?.id || plans[0]?.id || "");
+      }
+      setTrialUser(targetUser);
+      setTrialDurationDays(7);
+      setTrialReason("");
+    } catch {
+      toast.error("Gagal memuat paket");
+    }
+  };
+
+  const handleTrialSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trialUser || !trialPlanId) return;
+
+    setGrantingTrial(true);
+    try {
+      await adminSubscriptionsApi.grantTrial(trialUser.id, {
+        plan_id: trialPlanId,
+        duration_days: Number(trialDurationDays),
+        reason: trialReason || "Pemberian trial oleh admin di panel pengguna",
+      });
+      toast.success(`Masa trial berhasil diberikan ke ${trialUser.name}!`);
+      setTrialUser(null);
+    } catch (err: any) {
+      toast.error(err.message || "Gagal memberikan trial");
+    } finally {
+      setGrantingTrial(false);
     }
   };
 
@@ -499,6 +547,15 @@ export default function AdminUsersPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => handleOpenTrial(u)}
+                    className="h-8 text-xs px-2.5 text-purple-600 border-purple-200 hover:bg-purple-50"
+                  >
+                    <Gift className="w-3.5 h-3.5 mr-1" />
+                    Trial
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleOpenEdit(u)}
                     className="h-8 text-xs px-2.5"
                   >
@@ -597,6 +654,13 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleOpenTrial(u)}
+                            className="p-1 rounded-[4px] text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                            title="Beri Masa Trial"
+                          >
+                            <Gift className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             onClick={() => handleOpenEdit(u)}
                             className="p-1 rounded-[4px] text-[#6B6B6B] hover:text-[#0A0A0A] hover:bg-zinc-100"
@@ -832,6 +896,67 @@ export default function AdminUsersPage() {
             </Button>
           </div>
         </div>
+      </Dialog>
+
+      {/* Quick Grant Trial Dialog */}
+      <Dialog
+        open={Boolean(trialUser)}
+        onOpenChange={(open) => {
+          if (!open) setTrialUser(null);
+        }}
+        title="Beri Masa Trial Pengguna"
+        description={`Aktifkan paket uji coba gratis untuk ${trialUser?.name} (+${trialUser?.whatsapp_number})`}
+      >
+        <form onSubmit={handleTrialSubmit} className="space-y-4 text-xs">
+          <div>
+            <label className="block font-medium text-[#0A0A0A] mb-1">Pilih Paket Trial</label>
+            <Select
+              value={trialPlanId}
+              onChange={(e) => setTrialPlanId(e.target.value)}
+            >
+              {plans.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} - {formatRupiah(p.price)} ({p.course_limit} Matkul, {p.task_limit} Tugas, {p.notification_limit} Notifikasi)
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label className="block font-medium text-[#0A0A0A] mb-1">Durasi Trial (Hari)</label>
+            <Input
+              type="number"
+              min="1"
+              max="90"
+              value={trialDurationDays}
+              onChange={(e) => setTrialDurationDays(Math.max(1, parseInt(e.target.value) || 1))}
+              required
+            />
+            <span className="text-[10px] text-[#9C9C9C] block mt-1">
+              Pengguna akan menerima pesan notifikasi WhatsApp resmi secara otomatis.
+            </span>
+          </div>
+
+          <div>
+            <label className="block font-medium text-[#0A0A0A] mb-1">Catatan / Alasan Admin</label>
+            <Input
+              type="text"
+              placeholder="Contoh: Promo onboarding / request khusus mahasiswa"
+              value={trialReason}
+              onChange={(e) => setTrialReason(e.target.value)}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+            <Button type="button" variant="secondary" onClick={() => setTrialUser(null)}>
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" isLoading={grantingTrial} className="font-bold">
+              <Gift className="w-3.5 h-3.5 mr-1" />
+              Aktifkan Trial Sekarang
+            </Button>
+          </div>
+        </form>
       </Dialog>
     </div>
   );

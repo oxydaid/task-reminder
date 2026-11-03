@@ -322,24 +322,25 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Notification Logs */}
-      <Card>
-        <CardHeader>
+      {/* Notification Logs (Full-bleed Card) */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#E8E8EC] bg-white">
           <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-[#6366F1]" />
-            <CardTitle>Riwayat Notifikasi WhatsApp</CardTitle>
+            <h3 className="text-sm font-bold text-[#0A0A0A]">Riwayat Notifikasi WhatsApp</h3>
           </div>
-          <CardDescription>Daftar pesan pengingat yang telah diproses oleh bot</CardDescription>
-        </CardHeader>
-        <CardContent>
+          <p className="text-xs text-[#6B6B6B] mt-0.5">Daftar pesan pengingat yang telah diproses oleh bot</p>
+        </div>
+
+        <div>
           {logs.length === 0 ? (
-            <div className="text-center py-8 text-xs text-[#9C9C9C]">
+            <div className="text-center py-12 text-xs text-[#9C9C9C]">
               Belum ada riwayat pengingat yang dikirim.
             </div>
           ) : (
             <div className="divide-y divide-[#E8E8EC]">
               {paginatedLogs.map((log) => (
-                <div key={log.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div key={log.id} className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs hover:bg-zinc-50/50 transition-colors">
                   <div className="min-w-0">
                     <div className="font-semibold text-[#0A0A0A] truncate">{log.task_title}</div>
                     <div className="text-[#6B6B6B] text-[11px] mt-0.5 flex items-center gap-1.5 flex-wrap">
@@ -367,7 +368,7 @@ export default function SettingsPage() {
                       </Badge>
                     )}
 
-                    <span className="text-[11px] text-[#9C9C9C] hidden sm:inline whitespace-nowrap">
+                    <span className="text-[11px] text-[#9C9C9C] hidden sm:inline whitespace-nowrap font-mono">
                       {log.sent_at ? formatDateWIB(log.sent_at) : formatDateWIB(log.scheduled_at)}
                     </span>
                   </div>
@@ -377,16 +378,17 @@ export default function SettingsPage() {
           )}
 
           {/* Pagination Controls */}
-          <Pagination
-            currentPage={currentLogsPage}
-            totalPages={totalLogsPages}
-            totalItems={logs.length}
-            itemsPerPage={LOGS_PER_PAGE}
-            onPageChange={setCurrentLogsPage}
-            itemName="riwayat"
-            className="mt-4"
-          />
-        </CardContent>
+          <div className="px-5 py-3 border-t border-[#E8E8EC] bg-zinc-50/40">
+            <Pagination
+              currentPage={currentLogsPage}
+              totalPages={totalLogsPages}
+              totalItems={logs.length}
+              itemsPerPage={LOGS_PER_PAGE}
+              onPageChange={setCurrentLogsPage}
+              itemName="riwayat"
+            />
+          </div>
+        </div>
       </Card>
     </div>
   );

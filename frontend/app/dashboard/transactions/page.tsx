@@ -217,76 +217,74 @@ function UserTransactionsPageContent() {
         </div>
       ) : null}
 
-      {/* Transactions Table Card */}
-      <Card>
-        <CardContent className="p-0 sm:p-5">
-          {loading ? (
-            <div className="text-center py-12 text-xs text-[#9C9C9C]">
-              Memuat data transaksi...
-            </div>
-          ) : !transactions.length ? (
-            <div className="text-center py-12 space-y-3">
-              <ReceiptText className="w-10 h-10 text-zinc-300 mx-auto" />
-              <div className="text-xs text-[#6B6B6B]">Belum ada riwayat transaksi pembayaran.</div>
-              <Link href="/pricing">
-                <Button size="sm" variant="outline">
-                  Lihat Pilihan Paket
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-[#E8E8EC] text-[#6B6B6B] bg-zinc-50/50">
-                    <th className="py-3 px-4 font-semibold">Kode Transaksi</th>
-                    <th className="py-3 px-4 font-semibold">Paket</th>
-                    <th className="py-3 px-4 font-semibold">Metode Bayar</th>
-                    <th className="py-3 px-4 font-semibold">Total Tagihan</th>
-                    <th className="py-3 px-4 font-semibold">Status</th>
-                    <th className="py-3 px-4 font-semibold">Waktu Dibuat</th>
-                    <th className="py-3 px-4 text-right font-semibold">Aksi</th>
+      {/* Transactions Table Card (Full-bleed Card, No double padding) */}
+      <Card className="p-0 overflow-hidden">
+        {loading ? (
+          <div className="text-center py-16 text-xs text-[#9C9C9C]">
+            Memuat data transaksi...
+          </div>
+        ) : !transactions.length ? (
+          <div className="text-center py-16 space-y-3">
+            <ReceiptText className="w-10 h-10 text-zinc-300 mx-auto" />
+            <div className="text-xs text-[#6B6B6B]">Belum ada riwayat transaksi pembayaran.</div>
+            <Link href="/pricing">
+              <Button size="sm" variant="outline">
+                Lihat Pilihan Paket
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs whitespace-nowrap">
+              <thead className="bg-zinc-50 border-b border-[#E8E8EC] text-[#6B6B6B] font-semibold uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="py-3 px-5">Kode Transaksi</th>
+                  <th className="py-3 px-4">Paket</th>
+                  <th className="py-3 px-4">Metode Bayar</th>
+                  <th className="py-3 px-4">Total Tagihan</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Waktu Dibuat</th>
+                  <th className="py-3 px-5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E8E8EC]">
+                {transactions.map((tx) => (
+                  <tr
+                    key={tx.id}
+                    className={`hover:bg-zinc-50/70 transition-colors ${
+                      highlightedId === tx.id ? "bg-indigo-50/40" : ""
+                    }`}
+                  >
+                    <td className="py-3.5 px-5 font-mono font-bold text-[#0A0A0A]">
+                      {tx.code}
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-[#0A0A0A]">
+                      {tx.plan_name}
+                    </td>
+                    <td className="py-3.5 px-4 text-[#6B6B6B]">
+                      {tx.payment_method_name}
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-[#6366F1]">
+                      {formatRupiah(tx.total_amount)}
+                    </td>
+                    <td className="py-3.5 px-4">{getStatusBadge(tx.status)}</td>
+                    <td className="py-3.5 px-4 text-[#9C9C9C] font-mono">{formatDateWIB(tx.created_at)}</td>
+                    <td className="py-3.5 px-5 text-right">
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        onClick={() => openDetail(tx.id)}
+                        className="font-medium"
+                      >
+                        Detail & Bukti
+                      </Button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E8E8EC]">
-                  {transactions.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      className={`hover:bg-zinc-50/80 transition-colors ${
-                        highlightedId === tx.id ? "bg-indigo-50/40" : ""
-                      }`}
-                    >
-                      <td className="py-3.5 px-4 font-mono font-bold text-[#0A0A0A]">
-                        {tx.code}
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-[#0A0A0A]">
-                        {tx.plan_name}
-                      </td>
-                      <td className="py-3.5 px-4 text-[#6B6B6B]">
-                        {tx.payment_method_name}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-[#6366F1]">
-                        {formatRupiah(tx.total_amount)}
-                      </td>
-                      <td className="py-3.5 px-4">{getStatusBadge(tx.status)}</td>
-                      <td className="py-3.5 px-4 text-[#9C9C9C]">{formatDateWIB(tx.created_at)}</td>
-                      <td className="py-3.5 px-4 text-right">
-                        <Button
-                          variant="secondary"
-                          size="xs"
-                          onClick={() => openDetail(tx.id)}
-                          className="font-medium"
-                        >
-                          Detail & Bukti
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {/* Transaction Detail Dialog */}

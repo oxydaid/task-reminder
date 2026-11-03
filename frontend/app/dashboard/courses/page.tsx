@@ -228,13 +228,13 @@ export default function CoursesPage() {
       <button
         type="button"
         onClick={() => setIsFilterModalOpen(true)}
-        className="md:hidden fixed bottom-20 right-4 z-30 flex items-center gap-2 bg-[#6366F1] text-white px-4 py-3 rounded-full shadow-lg shadow-indigo-500/30 hover:bg-[#4F46E5] active:scale-95 transition-all text-xs font-semibold"
+        className="md:hidden fixed bottom-16 right-4 z-30 flex items-center gap-2 bg-[#6366F1] text-white px-3.5 py-2.5 rounded-full shadow-lg shadow-indigo-500/25 hover:bg-[#4F46E5] active:scale-95 transition-all text-xs font-semibold"
         aria-label="Cari Mata Kuliah"
       >
-        <SlidersHorizontal className="w-4 h-4" />
+        <SlidersHorizontal className="w-3.5 h-3.5" />
         <span>Cari Kuliah</span>
         {search ? (
-          <span className="w-5 h-5 bg-white text-[#6366F1] rounded-full text-[10px] font-bold flex items-center justify-center">
+          <span className="w-4 h-4 bg-white text-[#6366F1] rounded-full text-[10px] font-bold flex items-center justify-center">
             1
           </span>
         ) : null}

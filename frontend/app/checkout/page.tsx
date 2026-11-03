@@ -180,19 +180,19 @@ function CheckoutPageContent() {
           {/* Left Column: Form & Selections (7 Cols) */}
           <div className="lg:col-span-7 space-y-6">
             {/* Step 1: Pilih Paket */}
-            <Card>
-              <CardHeader>
+            <Card className="p-0 overflow-hidden">
+              <CardHeader className="px-5 py-4 border-b border-[#E8E8EC]">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#6366F1] text-white text-[11px] flex items-center justify-center">
+                    <span className="w-5 h-5 rounded-full bg-[#6366F1] text-white text-[11px] font-bold flex items-center justify-center">
                       1
                     </span>
                     <span>Pilihan Paket</span>
                   </CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <CardContent className="p-5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {plans.map((p) => {
                     const isSelected = p.id === selectedPlanId;
                     return (
@@ -200,23 +200,31 @@ function CheckoutPageContent() {
                         key={p.id}
                         type="button"
                         onClick={() => setSelectedPlanId(p.id)}
-                        className={`text-left p-3 rounded-[8px] border transition-all cursor-pointer ${
+                        className={`text-left p-3.5 rounded-[10px] border transition-all cursor-pointer flex sm:flex-col justify-between items-center sm:items-stretch gap-3 ${
                           isSelected
-                            ? "border-[#6366F1] bg-indigo-50/40 ring-1 ring-[#6366F1]"
+                            ? "border-[#6366F1] bg-indigo-50/40 ring-1 ring-[#6366F1] shadow-xs"
                             : "border-[#E8E8EC] hover:border-zinc-300 bg-white"
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs text-[#0A0A0A]">{p.name}</span>
-                          {isSelected ? (
-                            <CheckCircle2 className="w-4 h-4 text-[#6366F1]" />
-                          ) : null}
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-xs sm:text-sm text-[#0A0A0A] block">{p.name}</span>
+                          <div className="mt-1 font-extrabold text-sm sm:text-base text-[#0A0A0A]">
+                            {formatRupiah(p.price)}
+                          </div>
+                          <div className="mt-1 text-[10px] sm:text-[11px] text-[#6B6B6B]">
+                            {p.course_limit} Matkul • {p.task_limit} Tugas
+                          </div>
                         </div>
-                        <div className="mt-1 font-extrabold text-sm text-[#0A0A0A]">
-                          {formatRupiah(p.price)}
-                        </div>
-                        <div className="mt-1 text-[10px] text-[#6B6B6B]">
-                          {p.course_limit} Matkul • {p.task_limit} Tugas
+
+                        {/* Perfectly centered radio/checkmark indicator */}
+                        <div
+                          className={`w-5 h-5 rounded-full border shrink-0 flex items-center justify-center transition-all sm:self-end ${
+                            isSelected
+                              ? "border-[#6366F1] bg-[#6366F1] text-white shadow-xs"
+                              : "border-zinc-300 bg-white"
+                          }`}
+                        >
+                          {isSelected ? <Check className="w-3 h-3 text-white stroke-[2.5]" /> : null}
                         </div>
                       </button>
                     );
@@ -226,19 +234,19 @@ function CheckoutPageContent() {
             </Card>
 
             {/* Step 2: Pilih Metode Pembayaran */}
-            <Card>
-              <CardHeader>
+            <Card className="p-0 overflow-hidden">
+              <CardHeader className="px-5 py-4 border-b border-[#E8E8EC]">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-[#6366F1] text-white text-[11px] flex items-center justify-center">
+                  <span className="w-5 h-5 rounded-full bg-[#6366F1] text-white text-[11px] font-bold flex items-center justify-center">
                     2
                   </span>
                   <span>Metode Pembayaran</span>
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   Pilih transfer antar rekening bank atau pindai QRIS instan.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="p-5 space-y-3">
                 {paymentMethods.map((pm) => {
                   const isSelected = pm.id === selectedMethodId;
                   const isBank = pm.type === "bank_transfer";
@@ -247,14 +255,14 @@ function CheckoutPageContent() {
                     <div
                       key={pm.id}
                       onClick={() => setSelectedMethodId(pm.id)}
-                      className={`p-4 rounded-[10px] border cursor-pointer transition-all ${
+                      className={`p-3.5 sm:p-4 rounded-[10px] border cursor-pointer transition-all ${
                         isSelected
                           ? "border-[#6366F1] bg-indigo-50/20 ring-1 ring-[#6366F1]"
                           : "border-[#E8E8EC] hover:border-zinc-300 bg-white"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div
                             className={`w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 ${
                               isBank
@@ -268,11 +276,11 @@ function CheckoutPageContent() {
                               <QrCode className="w-5 h-5" />
                             )}
                           </div>
-                          <div>
-                            <div className="font-semibold text-xs sm:text-sm text-[#0A0A0A]">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-xs sm:text-sm text-[#0A0A0A] truncate">
                               {pm.name}
                             </div>
-                            <div className="text-[11px] text-[#6B6B6B]">
+                            <div className="text-[11px] text-[#6B6B6B] truncate">
                               {isBank
                                 ? `${pm.bank_name || "Bank"} • a/n ${pm.account_name || "-"}`
                                 : "Semua E-Wallet & Mobile Banking"}
@@ -280,9 +288,9 @@ function CheckoutPageContent() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5 shrink-0">
                           <div className="text-right">
-                            <span className="text-[11px] font-medium text-[#6B6B6B]">
+                            <span className="text-[11px] font-medium text-[#6B6B6B] whitespace-nowrap">
                               {pm.fee_type === "fixed" && pm.fee_fixed === 0
                                 ? "Bebas Biaya"
                                 : pm.fee_type === "fixed"
@@ -291,13 +299,13 @@ function CheckoutPageContent() {
                             </span>
                           </div>
                           <div
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                            className={`w-5 h-5 rounded-full border shrink-0 flex items-center justify-center transition-all ${
                               isSelected
-                                ? "border-[#6366F1] bg-[#6366F1] text-white"
-                                : "border-zinc-300"
+                                ? "border-[#6366F1] bg-[#6366F1] text-white shadow-xs"
+                                : "border-zinc-300 bg-white"
                             }`}
                           >
-                            {isSelected ? <div className="w-1.5 h-1.5 bg-white rounded-full" /> : null}
+                            {isSelected ? <Check className="w-3 h-3 text-white stroke-[2.5]" /> : null}
                           </div>
                         </div>
                       </div>
@@ -306,12 +314,12 @@ function CheckoutPageContent() {
                       {isSelected ? (
                         <div className="mt-3.5 pt-3.5 border-t border-indigo-100/70 text-xs">
                           {isBank ? (
-                            <div className="bg-white p-3 rounded-[8px] border border-zinc-200 flex items-center justify-between">
-                              <div>
+                            <div className="bg-white p-3 rounded-[8px] border border-zinc-200 flex items-center justify-between gap-3">
+                              <div className="min-w-0 flex-1">
                                 <div className="text-[10px] text-[#9C9C9C] uppercase font-semibold">
                                   Nomor Rekening {pm.bank_name}
                                 </div>
-                                <div className="font-mono font-bold text-sm text-[#0A0A0A] mt-0.5">
+                                <div className="font-mono font-bold text-sm text-[#0A0A0A] mt-0.5 tracking-wide">
                                   {pm.account_number}
                                 </div>
                                 <div className="text-[11px] text-[#6B6B6B]">
@@ -325,7 +333,7 @@ function CheckoutPageContent() {
                                   e.stopPropagation();
                                   handleCopy(pm.account_number || "");
                                 }}
-                                className="flex items-center gap-1"
+                                className="flex items-center gap-1 shrink-0"
                               >
                                 {copied ? (
                                   <>
@@ -346,7 +354,7 @@ function CheckoutPageContent() {
                                 <img
                                   src={pm.qris_image_url}
                                   alt="QRIS Barcode"
-                                  className="w-48 h-48 object-contain rounded-[6px] border border-zinc-100 mb-2"
+                                  className="w-44 h-44 object-contain rounded-[6px] border border-zinc-100 mb-2"
                                 />
                               ) : (
                                 <div className="w-36 h-36 bg-zinc-100 rounded-[6px] flex items-center justify-center text-zinc-400 mb-2">
@@ -372,11 +380,11 @@ function CheckoutPageContent() {
 
           {/* Right Column: Order Summary (5 Cols) */}
           <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-20">
-            <Card className="border-[#E8E8EC] shadow-sm">
-              <CardHeader>
+            <Card className="p-0 overflow-hidden border-[#E8E8EC] shadow-sm">
+              <CardHeader className="px-5 py-4 border-b border-[#E8E8EC]">
                 <CardTitle className="text-base font-bold">Ringkasan Pembayaran</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="p-5 space-y-4">
                 {selectedPlan ? (
                   <div className="p-3.5 rounded-[8px] bg-zinc-50 border border-zinc-200/60">
                     <div className="flex items-center justify-between">

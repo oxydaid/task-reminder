@@ -243,8 +243,9 @@ export default function DashboardPage() {
             <h2 className="text-lg font-bold text-[#0A0A0A]">Tugas Terdekat</h2>
             <p className="text-xs text-[#6B6B6B]">Daftar tugas yang deadline-nya paling dekat</p>
           </div>
-          <Link href="/dashboard/tasks" className="text-xs font-medium text-[#6366F1] hover:underline flex items-center gap-1">
-            Lihat Semua Tugas <ArrowRight className="w-3.5 h-3.5" />
+          <Link href="/dashboard/tasks" className="text-xs font-medium text-[#6366F1] hover:underline flex items-center gap-1 shrink-0">
+            <span>Lihat semua</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 

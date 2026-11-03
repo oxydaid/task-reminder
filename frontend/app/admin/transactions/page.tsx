@@ -215,75 +215,73 @@ export default function AdminTransactionsPage() {
         </form>
       </div>
 
-      {/* Transactions Table Card */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="text-center py-16 text-xs text-[#9C9C9C]">
-              Memuat data transaksi...
-            </div>
-          ) : !transactions.length ? (
-            <div className="text-center py-16 text-xs text-[#9C9C9C]">
-              Tidak ada data transaksi yang sesuai filter.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-[#E8E8EC] text-[#6B6B6B] bg-zinc-50/50">
-                    <th className="py-3 px-4 font-semibold">Kode</th>
-                    <th className="py-3 px-4 font-semibold">Pengguna & WA</th>
-                    <th className="py-3 px-4 font-semibold">Paket</th>
-                    <th className="py-3 px-4 font-semibold">Metode</th>
-                    <th className="py-3 px-4 font-semibold">Total Tagihan</th>
-                    <th className="py-3 px-4 font-semibold">Status</th>
-                    <th className="py-3 px-4 font-semibold">Waktu Dibuat</th>
-                    <th className="py-3 px-4 text-right font-semibold">Aksi</th>
+      {/* Transactions Table Card (Full-bleed Card) */}
+      <Card className="p-0 overflow-hidden">
+        {loading ? (
+          <div className="text-center py-16 text-xs text-[#9C9C9C]">
+            Memuat data transaksi...
+          </div>
+        ) : !transactions.length ? (
+          <div className="text-center py-16 text-xs text-[#9C9C9C]">
+            Tidak ada data transaksi yang sesuai filter.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs whitespace-nowrap">
+              <thead className="bg-zinc-50 border-b border-[#E8E8EC] text-[#6B6B6B] font-semibold uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="py-3 px-5">Kode</th>
+                  <th className="py-3 px-4">Pengguna & WA</th>
+                  <th className="py-3 px-4">Paket</th>
+                  <th className="py-3 px-4">Metode</th>
+                  <th className="py-3 px-4">Total Tagihan</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Waktu Dibuat</th>
+                  <th className="py-3 px-5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E8E8EC]">
+                {transactions.map((tx) => (
+                  <tr
+                    key={tx.id}
+                    className={`hover:bg-zinc-50/70 transition-colors ${
+                      tx.status === "waiting_verification" ? "bg-blue-50/20" : ""
+                    }`}
+                  >
+                    <td className="py-3.5 px-5 font-mono font-bold text-[#0A0A0A]">
+                      {tx.code}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-semibold text-[#0A0A0A]">{tx.user_name || "User"}</div>
+                      <div className="text-[11px] text-[#9C9C9C] font-mono">+{tx.user_phone}</div>
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-[#0A0A0A]">{tx.plan_name}</td>
+                    <td className="py-3.5 px-4 text-[#6B6B6B]">{tx.payment_method_name}</td>
+                    <td className="py-3.5 px-4 font-bold text-[#6366F1]">
+                      {formatRupiah(tx.total_amount)}
+                    </td>
+                    <td className="py-3.5 px-4">{getStatusBadge(tx.status)}</td>
+                    <td className="py-3.5 px-4 text-[#9C9C9C] font-mono">{formatDateWIB(tx.created_at)}</td>
+                    <td className="py-3.5 px-5 text-right">
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        onClick={() => openDetail(tx.id)}
+                        className={
+                          tx.status === "waiting_verification"
+                            ? "bg-indigo-50 text-[#6366F1] border-indigo-200 hover:bg-indigo-100 font-bold"
+                            : "font-medium"
+                        }
+                      >
+                        Tinjau
+                      </Button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E8E8EC]">
-                  {transactions.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      className={`hover:bg-zinc-50/80 transition-colors ${
-                        tx.status === "waiting_verification" ? "bg-blue-50/20" : ""
-                      }`}
-                    >
-                      <td className="py-3.5 px-4 font-mono font-bold text-[#0A0A0A]">
-                        {tx.code}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-[#0A0A0A]">{tx.user_name || "User"}</div>
-                        <div className="text-[11px] text-[#9C9C9C]">{tx.user_phone}</div>
-                      </td>
-                      <td className="py-3.5 px-4 font-medium text-[#0A0A0A]">{tx.plan_name}</td>
-                      <td className="py-3.5 px-4 text-[#6B6B6B]">{tx.payment_method_name}</td>
-                      <td className="py-3.5 px-4 font-bold text-[#6366F1]">
-                        {formatRupiah(tx.total_amount)}
-                      </td>
-                      <td className="py-3.5 px-4">{getStatusBadge(tx.status)}</td>
-                      <td className="py-3.5 px-4 text-[#9C9C9C]">{formatDateWIB(tx.created_at)}</td>
-                      <td className="py-3.5 px-4 text-right">
-                        <Button
-                          variant="secondary"
-                          size="xs"
-                          onClick={() => openDetail(tx.id)}
-                          className={
-                            tx.status === "waiting_verification"
-                              ? "bg-indigo-50 text-[#6366F1] border-indigo-200 hover:bg-indigo-100 font-bold"
-                              : "font-medium"
-                          }
-                        >
-                          Tinjau
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {/* Review & Verification Dialog */}

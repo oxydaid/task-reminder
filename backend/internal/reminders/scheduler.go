@@ -201,8 +201,11 @@ func (s *Scheduler) CheckAndSend() {
 	defer s.mu.Unlock()
 
 	nowUTC := time.Now().UTC()
+	// Reminders are only relevant between -48 hours (overdue stage) and +96 hours (pre-deadline H-3 window)
+	windowStartStr := nowUTC.Add(-48 * time.Hour).Format(time.RFC3339)
+	windowEndStr := nowUTC.Add(96 * time.Hour).Format(time.RFC3339)
 
-	// Query pending tasks that have reminders enabled and user settings reminder enabled
+	// Bounded query with composite index (status, reminder_enabled, deadline_at)
 	query := `
 		SELECT t.id, t.user_id, t.title, COALESCE(c.name, 'Umum') as course_name,
 		       t.deadline_at, t.reminder_offset_minutes,
@@ -213,11 +216,13 @@ func (s *Scheduler) CheckAndSend() {
 		LEFT JOIN user_settings us ON us.user_id = u.id
 		WHERE t.status = 'pending'
 		  AND t.reminder_enabled = 1
+		  AND t.deadline_at >= ?
+		  AND t.deadline_at <= ?
 		  AND (us.reminder_enabled IS NULL OR us.reminder_enabled = 1)
 		  AND u.is_active = 1
 	`
 
-	rows, err := s.db.Query(query)
+	rows, err := s.db.Query(query, windowStartStr, windowEndStr)
 	if err != nil {
 		log.Printf("[Scheduler] Error querying eligible tasks: %v\n", err)
 		return
@@ -350,22 +355,42 @@ Jangan lupa diselesaikan dan beri tanda centang pada web, ya! 💪`, taskTitle, 
 	}
 
 	attemptCount++
-	sendErr := s.wa.SendMessage(phone, message)
+	dedupKey := fmt.Sprintf("reminder:%s:%d", taskID, stage.OffsetMinutes)
 
-	if sendErr != nil {
-		log.Printf("[Scheduler] Failed sending reminder to %s for task '%s' (stage: %d): %v\n", phone, taskTitle, stage.OffsetMinutes, sendErr)
-		_, _ = s.db.Exec(`
-			UPDATE reminder_logs
-			SET status = 'failed', attempt_count = ?, last_error = ?, updated_at = ?
-			WHERE id = ?
-		`, attemptCount, sendErr.Error(), nowStr, logID)
-	} else {
-		log.Printf("[Scheduler] Successfully sent reminder to %s for task '%s' (stage: %d)\n", phone, taskTitle, stage.OffsetMinutes)
-		_, _ = s.db.Exec(`
-			UPDATE reminder_logs
-			SET status = 'sent', attempt_count = ?, sent_at = ?, last_error = '', updated_at = ?
-			WHERE id = ?
-		`, attemptCount, nowStr, nowStr, logID)
+	if s.outbox != nil {
+		_, err := s.outbox.Enqueue(phone, message, "", dedupKey)
+		if err != nil {
+			log.Printf("[Scheduler] Failed enqueuing reminder to %s for task '%s' (stage: %d): %v\n", phone, taskTitle, stage.OffsetMinutes, err)
+			_, _ = s.db.Exec(`
+				UPDATE reminder_logs
+				SET status = 'failed', attempt_count = ?, last_error = ?, updated_at = ?
+				WHERE id = ?
+			`, attemptCount, err.Error(), nowStr, logID)
+		} else {
+			log.Printf("[Scheduler] Enqueued reminder to outbox for %s (task: '%s', stage: %d)\n", phone, taskTitle, stage.OffsetMinutes)
+			_, _ = s.db.Exec(`
+				UPDATE reminder_logs
+				SET status = 'sent', attempt_count = ?, sent_at = ?, last_error = '', updated_at = ?
+				WHERE id = ?
+			`, attemptCount, nowStr, nowStr, logID)
+		}
+	} else if s.wa != nil {
+		sendErr := s.wa.SendMessage(phone, message)
+		if sendErr != nil {
+			log.Printf("[Scheduler] Failed sending reminder to %s for task '%s' (stage: %d): %v\n", phone, taskTitle, stage.OffsetMinutes, sendErr)
+			_, _ = s.db.Exec(`
+				UPDATE reminder_logs
+				SET status = 'failed', attempt_count = ?, last_error = ?, updated_at = ?
+				WHERE id = ?
+			`, attemptCount, sendErr.Error(), nowStr, logID)
+		} else {
+			log.Printf("[Scheduler] Successfully sent reminder to %s for task '%s' (stage: %d)\n", phone, taskTitle, stage.OffsetMinutes)
+			_, _ = s.db.Exec(`
+				UPDATE reminder_logs
+				SET status = 'sent', attempt_count = ?, sent_at = ?, last_error = '', updated_at = ?
+				WHERE id = ?
+			`, attemptCount, nowStr, nowStr, logID)
+		}
 	}
 }
 

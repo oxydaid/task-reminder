@@ -125,15 +125,15 @@ export default function SubscriptionPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link href="/pricing">
-            <Button variant="primary" size="sm" className="flex items-center gap-1.5 shadow-xs">
+            <Button variant="primary" size="sm" className="flex items-center gap-1.5 shadow-xs text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>{plan?.price === 0 ? "Upgrade Paket" : "Perpanjang / Ganti Paket"}</span>
             </Button>
           </Link>
           <Link href="/dashboard/transactions">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="text-xs">
               Riwayat Transaksi
             </Button>
           </Link>
@@ -173,8 +173,8 @@ export default function SubscriptionPage() {
       ) : null}
 
       {/* Plan Overview Hero Card */}
-      <Card className="border-[#6366F1]/20 bg-gradient-to-br from-white via-indigo-50/20 to-purple-50/30 overflow-hidden">
-        <CardContent className="p-6">
+      <Card className="p-0 overflow-hidden border-[#6366F1]/20 bg-gradient-to-br from-white via-indigo-50/20 to-purple-50/30">
+        <div className="p-5 sm:p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -235,198 +235,191 @@ export default function SubscriptionPage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0">
-              <Link href="/pricing">
+            <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0 w-full sm:w-auto">
+              <Link href="/pricing" className="w-full">
                 <Button className="w-full font-bold text-xs">
                   <Sparkles className="w-3.5 h-3.5 mr-1" />
                   Upgrade Kuota
                 </Button>
               </Link>
               {usage?.is_over_limit ? (
-                <Button variant="outline" size="sm" onClick={openDowngradeSelector} className="text-xs">
+                <Button variant="outline" size="sm" onClick={openDowngradeSelector} className="text-xs w-full">
                   Atur Pengingat Aktif
                 </Button>
               ) : null}
             </div>
           </div>
-        </CardContent>
+        </div>
       </Card>
 
       {/* Quota Progress Overview (3 Grid Items) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Mata Kuliah */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-[#6B6B6B] mb-2">
-              <span className="flex items-center gap-1.5 text-[#0A0A0A]">
-                <BookOpen className="w-4 h-4 text-[#6366F1]" />
-                Mata Kuliah
-              </span>
-              <span>
-                {usage?.course_count} / {usage?.course_limit}
-              </span>
-            </div>
-            <div className="w-full h-2 rounded-full bg-zinc-100 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  (usage?.course_count || 0) >= (usage?.course_limit || 1)
-                    ? "bg-amber-500"
-                    : "bg-[#6366F1]"
-                }`}
-                style={{
-                  width: `${Math.min(
-                    100,
-                    Math.round(((usage?.course_count || 0) / (usage?.course_limit || 1)) * 100)
-                  )}%`,
-                }}
-              />
-            </div>
-            <p className="text-[11px] text-[#9C9C9C] mt-2">
-              {(usage?.course_limit || 0) - (usage?.course_count || 0) > 0
-                ? `Tersisa ${(usage?.course_limit || 0) - (usage?.course_count || 0)} slot mata kuliah`
-                : "Batas mata kuliah tercapai"}
-            </p>
-          </CardContent>
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs font-semibold text-[#6B6B6B] mb-2">
+            <span className="flex items-center gap-1.5 text-[#0A0A0A]">
+              <BookOpen className="w-4 h-4 text-[#6366F1]" />
+              Mata Kuliah
+            </span>
+            <span>
+              {usage?.course_count} / {usage?.course_limit}
+            </span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-zinc-100 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                (usage?.course_count || 0) >= (usage?.course_limit || 1)
+                  ? "bg-amber-500"
+                  : "bg-[#6366F1]"
+              }`}
+              style={{
+                width: `${Math.min(
+                  100,
+                  Math.round(((usage?.course_count || 0) / (usage?.course_limit || 1)) * 100)
+                )}%`,
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-[#9C9C9C] mt-2">
+            {(usage?.course_limit || 0) - (usage?.course_count || 0) > 0
+              ? `Tersisa ${(usage?.course_limit || 0) - (usage?.course_count || 0)} slot mata kuliah`
+              : "Batas mata kuliah tercapai"}
+          </p>
         </Card>
 
         {/* Tugas Kuliah */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-[#6B6B6B] mb-2">
-              <span className="flex items-center gap-1.5 text-[#0A0A0A]">
-                <CheckSquare className="w-4 h-4 text-emerald-600" />
-                Tugas Aktif
-              </span>
-              <span>
-                {usage?.task_count} / {usage?.task_limit}
-              </span>
-            </div>
-            <div className="w-full h-2 rounded-full bg-zinc-100 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  (usage?.task_count || 0) >= (usage?.task_limit || 1)
-                    ? "bg-amber-500"
-                    : "bg-emerald-500"
-                }`}
-                style={{
-                  width: `${Math.min(
-                    100,
-                    Math.round(((usage?.task_count || 0) / (usage?.task_limit || 1)) * 100)
-                  )}%`,
-                }}
-              />
-            </div>
-            <p className="text-[11px] text-[#9C9C9C] mt-2">
-              {(usage?.task_limit || 0) - (usage?.task_count || 0) > 0
-                ? `Tersisa ${(usage?.task_limit || 0) - (usage?.task_count || 0)} slot tugas baru`
-                : "Batas tugas paket tercapai"}
-            </p>
-          </CardContent>
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs font-semibold text-[#6B6B6B] mb-2">
+            <span className="flex items-center gap-1.5 text-[#0A0A0A]">
+              <CheckSquare className="w-4 h-4 text-emerald-600" />
+              Tugas Aktif
+            </span>
+            <span>
+              {usage?.task_count} / {usage?.task_limit}
+            </span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-zinc-100 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                (usage?.task_count || 0) >= (usage?.task_limit || 1)
+                  ? "bg-amber-500"
+                  : "bg-emerald-500"
+              }`}
+              style={{
+                width: `${Math.min(
+                  100,
+                  Math.round(((usage?.task_count || 0) / (usage?.task_limit || 1)) * 100)
+                )}%`,
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-[#9C9C9C] mt-2">
+            {(usage?.task_limit || 0) - (usage?.task_count || 0) > 0
+              ? `Tersisa ${(usage?.task_limit || 0) - (usage?.task_count || 0)} slot tugas baru`
+              : "Batas tugas paket tercapai"}
+          </p>
         </Card>
 
         {/* Notifikasi WhatsApp */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-[#6B6B6B] mb-2">
-              <span className="flex items-center gap-1.5 text-[#0A0A0A]">
-                <Bell className="w-4 h-4 text-purple-600" />
-                Pengingat WhatsApp
-              </span>
-              <span>
-                {usage?.notification_count} / {usage?.notification_limit}
-              </span>
-            </div>
-            <div className="w-full h-2 rounded-full bg-zinc-100 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  (usage?.notification_count || 0) > (usage?.notification_limit || 1)
-                    ? "bg-red-500"
-                    : (usage?.notification_count || 0) === (usage?.notification_limit || 1)
-                    ? "bg-amber-500"
-                    : "bg-purple-600"
-                }`}
-                style={{
-                  width: `${Math.min(
-                    100,
-                    Math.round(((usage?.notification_count || 0) / (usage?.notification_limit || 1)) * 100)
-                  )}%`,
-                }}
-              />
-            </div>
-            <p className="text-[11px] text-[#9C9C9C] mt-2">
-              {(usage?.notification_count || 0) > (usage?.notification_limit || 1)
-                ? "Melebihi kuota! Atur pengingat aktif"
-                : `Maksimal ${usage?.notification_limit} tugas berpengingat`}
-            </p>
-          </CardContent>
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-center justify-between text-xs font-semibold text-[#6B6B6B] mb-2">
+            <span className="flex items-center gap-1.5 text-[#0A0A0A]">
+              <Bell className="w-4 h-4 text-purple-600" />
+              Pengingat WhatsApp
+            </span>
+            <span>
+              {usage?.notification_count} / {usage?.notification_limit}
+            </span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-zinc-100 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                (usage?.notification_count || 0) > (usage?.notification_limit || 1)
+                  ? "bg-red-500"
+                  : (usage?.notification_count || 0) === (usage?.notification_limit || 1)
+                  ? "bg-amber-500"
+                  : "bg-purple-600"
+              }`}
+              style={{
+                width: `${Math.min(
+                  100,
+                  Math.round(((usage?.notification_count || 0) / (usage?.notification_limit || 1)) * 100)
+                )}%`,
+              }}
+            />
+          </div>
+          <p className="text-[11px] text-[#9C9C9C] mt-2">
+            {(usage?.notification_count || 0) > (usage?.notification_limit || 1)
+              ? "Melebihi kuota! Atur pengingat aktif"
+              : `Maksimal ${usage?.notification_limit} tugas berpengingat`}
+          </p>
         </Card>
       </div>
 
-      {/* Subscription History Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-bold flex items-center gap-2">
+      {/* Subscription History Table (Full-bleed Card, No wrapping) */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#E8E8EC] bg-white">
+          <div className="flex items-center gap-2">
             <History className="w-4 h-4 text-[#6366F1]" />
-            <span>Riwayat Paket Langganan</span>
-          </CardTitle>
-          <CardDescription>
+            <h3 className="text-sm font-bold text-[#0A0A0A]">Riwayat Paket Langganan</h3>
+          </div>
+          <p className="text-xs text-[#6B6B6B] mt-0.5">
             Catatan seluruh paket langganan yang pernah aktif pada akun Anda.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!history.length ? (
-            <div className="text-center py-8 text-xs text-[#9C9C9C]">
-              Belum ada riwayat langganan sebelumnya.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-[#E8E8EC] text-[#6B6B6B]">
-                    <th className="pb-3 font-semibold">Paket</th>
-                    <th className="pb-3 font-semibold">Tipe</th>
-                    <th className="pb-3 font-semibold">Status</th>
-                    <th className="pb-3 font-semibold">Mulai</th>
-                    <th className="pb-3 font-semibold">Berakhir</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E8E8EC]">
-                  {history.map((h) => {
-                    const isCur = h.id === sub?.id;
-                    return (
-                      <tr key={h.id} className="hover:bg-zinc-50/50">
-                        <td className="py-3 font-medium text-[#0A0A0A]">
-                          Paket {h.plan?.name || "Standard"}
-                          {isCur ? (
-                            <span className="ml-2 text-[10px] bg-indigo-50 text-[#6366F1] px-1.5 py-0.5 rounded font-bold">
-                              Saat ini
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="py-3 capitalize text-[#6B6B6B]">{h.subscription_type}</td>
-                        <td className="py-3">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              h.status === "active"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : h.status === "trialing"
-                                ? "bg-amber-50 text-amber-700"
-                                : "bg-zinc-100 text-[#6B6B6B]"
-                            }`}
-                          >
-                            {h.status}
+          </p>
+        </div>
+
+        {!history.length ? (
+          <div className="text-center py-10 text-xs text-[#9C9C9C]">
+            Belum ada riwayat langganan sebelumnya.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs whitespace-nowrap">
+              <thead className="bg-zinc-50 border-b border-[#E8E8EC] text-[#6B6B6B] font-semibold uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="py-3 px-5">Paket</th>
+                  <th className="py-3 px-4">Tipe</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Mulai</th>
+                  <th className="py-3 px-5">Berakhir</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E8E8EC]">
+                {history.map((h) => {
+                  const isCur = h.id === sub?.id;
+                  return (
+                    <tr key={h.id} className="hover:bg-zinc-50/60 transition-colors">
+                      <td className="py-3.5 px-5 font-semibold text-[#0A0A0A]">
+                        Paket {h.plan?.name || "Standard"}
+                        {isCur ? (
+                          <span className="ml-2 text-[10px] bg-indigo-50 text-[#6366F1] px-1.5 py-0.5 rounded-[4px] font-bold">
+                            Saat ini
                           </span>
-                        </td>
-                        <td className="py-3 text-[#6B6B6B]">{formatDateOnly(h.started_at)}</td>
-                        <td className="py-3 text-[#6B6B6B]">{formatDateOnly(h.expires_at) || "Permanen"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
+                        ) : null}
+                      </td>
+                      <td className="py-3.5 px-4 capitalize text-[#6B6B6B]">{h.subscription_type}</td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            h.status === "active"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : h.status === "trialing"
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-zinc-100 text-[#6B6B6B]"
+                          }`}
+                        >
+                          {h.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-[#6B6B6B] font-mono">{formatDateOnly(h.started_at)}</td>
+                      <td className="py-3.5 px-5 text-[#6B6B6B] font-mono">{formatDateOnly(h.expires_at) || "Permanen"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {/* Downgrade Selector Dialog */}

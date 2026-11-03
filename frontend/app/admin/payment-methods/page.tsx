@@ -252,13 +252,13 @@ export default function AdminPaymentMethodsPage() {
             return (
               <Card
                 key={pm.id}
-                className={`flex flex-col justify-between transition-all ${
+                className={`p-0 overflow-hidden flex flex-col justify-between transition-all ${
                   !pm.is_active ? "opacity-60 bg-zinc-50" : ""
                 }`}
               >
-                <CardContent className="p-5 space-y-4">
+                <div className="p-4 sm:p-5 space-y-3.5 flex-1">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
                         className={`w-10 h-10 rounded-[8px] flex items-center justify-center shrink-0 ${
                           isBank
@@ -268,15 +268,15 @@ export default function AdminPaymentMethodsPage() {
                       >
                         {isBank ? <CreditCard className="w-5 h-5" /> : <QrCode className="w-5 h-5" />}
                       </div>
-                      <div>
-                        <h3 className="font-bold text-sm text-[#0A0A0A]">{pm.name}</h3>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-sm text-[#0A0A0A] truncate">{pm.name}</h3>
                         <div className="text-[11px] text-[#6B6B6B]">
                           {isBank ? "Transfer Antar Bank" : "QRIS All Payment"}
                         </div>
                       </div>
                     </div>
 
-                    <Badge variant={pm.is_active ? "success" : "secondary"} className="text-[10px]">
+                    <Badge variant={pm.is_active ? "success" : "secondary"} className="text-[10px] shrink-0">
                       {pm.is_active ? "Aktif" : "Nonaktif"}
                     </Badge>
                   </div>
@@ -284,14 +284,15 @@ export default function AdminPaymentMethodsPage() {
                   {/* Details */}
                   {isBank ? (
                     <div className="bg-zinc-50 p-3 rounded-[8px] border border-zinc-200/80 space-y-1 text-xs">
-                      <div className="text-[#6B6B6B]">
-                        Bank: <strong>{pm.bank_name || "-"}</strong>
+                      <div className="text-[#6B6B6B] flex items-center justify-between">
+                        <span>Bank:</span>
+                        <strong className="text-[#0A0A0A]">{pm.bank_name || "-"}</strong>
                       </div>
-                      <div className="font-mono font-bold text-sm text-[#0A0A0A]">
+                      <div className="font-mono font-bold text-sm text-[#0A0A0A] tracking-wider py-0.5">
                         {pm.account_number || "-"}
                       </div>
                       <div className="text-[11px] text-[#6B6B6B]">
-                        Atas Nama: <strong>{pm.account_name || "-"}</strong>
+                        Atas Nama: <strong className="text-[#0A0A0A]">{pm.account_name || "-"}</strong>
                       </div>
                     </div>
                   ) : (
@@ -301,7 +302,7 @@ export default function AdminPaymentMethodsPage() {
                           href={pm.qris_image_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="w-14 h-14 rounded bg-white border border-zinc-200 overflow-hidden shrink-0 block"
+                          className="w-14 h-14 rounded bg-white border border-zinc-200 overflow-hidden shrink-0 block hover:opacity-80 transition-opacity"
                         >
                           <img
                             src={pm.qris_image_url}
@@ -314,9 +315,9 @@ export default function AdminPaymentMethodsPage() {
                           <QrCode className="w-6 h-6" />
                         </div>
                       )}
-                      <div>
-                        <div className="font-semibold text-[#0A0A0A]">{pm.account_name || "QRIS Official"}</div>
-                        <div className="text-[10px] text-[#9C9C9C]">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-xs text-[#0A0A0A] truncate">{pm.account_name || "QRIS Official"}</div>
+                        <div className="text-[10px] text-[#6B6B6B] mt-0.5">
                           {pm.qris_image_url ? "Barcode QRIS Terpasang" : "Belum ada barcode QRIS"}
                         </div>
                       </div>
@@ -328,10 +329,10 @@ export default function AdminPaymentMethodsPage() {
                     <span>Biaya Layanan:</span>
                     <span className="font-bold text-[#0A0A0A]">{getFeeDescription(pm)}</span>
                   </div>
-                </CardContent>
+                </div>
 
-                <div className="p-3 bg-zinc-50 border-t border-[#E8E8EC] flex items-center justify-between">
-                  <span className="text-[11px] text-[#9C9C9C]">Urutan: #{pm.sort_order}</span>
+                <div className="px-4 py-2.5 bg-zinc-50 border-t border-[#E8E8EC] flex items-center justify-between">
+                  <span className="text-[11px] text-[#9C9C9C]">Urutan #{pm.sort_order}</span>
                   <div className="flex gap-1">
                     <Button
                       variant="ghost"

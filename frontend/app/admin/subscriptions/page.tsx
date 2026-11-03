@@ -285,80 +285,78 @@ export default function AdminSubscriptionsPage() {
         </div>
       </div>
 
-      {/* Subscriptions Table */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="text-center py-16 text-xs text-[#9C9C9C]">
-              Memuat data langganan...
-            </div>
-          ) : !filteredSubscriptions.length ? (
-            <div className="text-center py-16 text-xs text-[#9C9C9C]">
-              Tidak ada data langganan yang cocok.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-[#E8E8EC] text-[#6B6B6B] bg-zinc-50/50">
-                    <th className="py-3 px-4 font-semibold">Pengguna</th>
-                    <th className="py-3 px-4 font-semibold">Paket</th>
-                    <th className="py-3 px-4 font-semibold">Tipe</th>
-                    <th className="py-3 px-4 font-semibold">Status</th>
-                    <th className="py-3 px-4 font-semibold">Masa Aktif</th>
-                    <th className="py-3 px-4 font-semibold">Tanggal Mulai</th>
-                    <th className="py-3 px-4 text-right font-semibold">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E8E8EC]">
-                  {filteredSubscriptions.map((sub) => {
-                    const isRunning = sub.status === "active" || sub.status === "trialing";
-                    return (
-                      <tr key={sub.id} className="hover:bg-zinc-50/80 transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-[#0A0A0A]">{sub.user_name}</div>
-                          <div className="text-[11px] text-[#9C9C9C]">{sub.whatsapp_number}</div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-medium text-[#0A0A0A]">Paket {sub.plan_name}</div>
-                          <div className="text-[11px] text-[#6B6B6B]">
-                            {sub.plan_price === 0 ? "Gratis" : formatRupiah(sub.plan_price)}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 capitalize text-[#6B6B6B]">
-                          {sub.subscription_type}
-                        </td>
-                        <td className="py-3 px-4">{getStatusBadge(sub.status, sub.subscription_type)}</td>
-                        <td className="py-3 px-4 text-[#6B6B6B]">
-                          {sub.expires_at ? (
-                            <span>Hingga {formatDateOnly(sub.expires_at)}</span>
-                          ) : (
-                            <span className="text-emerald-700 font-medium">Permanen (Free)</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-[#9C9C9C]">{formatDateWIB(sub.started_at)}</td>
-                        <td className="py-3 px-4 text-right">
-                          {isRunning && sub.plan_price > 0 ? (
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              onClick={() => setCancelSubItem(sub)}
-                              className="text-red-600 hover:bg-red-50 text-[11px]"
-                            >
-                              Cabut Paket
-                            </Button>
-                          ) : (
-                            <span className="text-[11px] text-[#9C9C9C]">-</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
+      {/* Subscriptions Table (Full-bleed Card) */}
+      <Card className="p-0 overflow-hidden">
+        {loading ? (
+          <div className="text-center py-16 text-xs text-[#9C9C9C]">
+            Memuat data langganan...
+          </div>
+        ) : !filteredSubscriptions.length ? (
+          <div className="text-center py-16 text-xs text-[#9C9C9C]">
+            Tidak ada data langganan yang cocok.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs whitespace-nowrap">
+              <thead className="bg-zinc-50 border-b border-[#E8E8EC] text-[#6B6B6B] font-semibold uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="py-3 px-5">Pengguna</th>
+                  <th className="py-3 px-4">Paket</th>
+                  <th className="py-3 px-4">Tipe</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Masa Aktif</th>
+                  <th className="py-3 px-4">Tanggal Mulai</th>
+                  <th className="py-3 px-5 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E8E8EC]">
+                {filteredSubscriptions.map((sub) => {
+                  const isRunning = sub.status === "active" || sub.status === "trialing";
+                  return (
+                    <tr key={sub.id} className="hover:bg-zinc-50/70 transition-colors">
+                      <td className="py-3.5 px-5">
+                        <div className="font-semibold text-[#0A0A0A]">{sub.user_name}</div>
+                        <div className="text-[11px] text-[#9C9C9C] font-mono">+{sub.whatsapp_number}</div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-[#0A0A0A]">Paket {sub.plan_name}</div>
+                        <div className="text-[11px] text-[#6B6B6B]">
+                          {sub.plan_price === 0 ? "Gratis" : formatRupiah(sub.plan_price)}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 capitalize text-[#6B6B6B]">
+                        {sub.subscription_type}
+                      </td>
+                      <td className="py-3.5 px-4">{getStatusBadge(sub.status, sub.subscription_type)}</td>
+                      <td className="py-3.5 px-4 text-[#6B6B6B]">
+                        {sub.expires_at ? (
+                          <span>Hingga {formatDateOnly(sub.expires_at)}</span>
+                        ) : (
+                          <span className="text-emerald-700 font-medium">Permanen (Free)</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-[#9C9C9C] font-mono">{formatDateWIB(sub.started_at)}</td>
+                      <td className="py-3.5 px-5 text-right">
+                        {isRunning && sub.plan_price > 0 ? (
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => setCancelSubItem(sub)}
+                            className="text-red-600 hover:bg-red-50 text-[11px] font-medium"
+                          >
+                            Cabut Paket
+                          </Button>
+                        ) : (
+                          <span className="text-[11px] text-[#9C9C9C]">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {/* Modal: Grant Trial or Manual Activation */}

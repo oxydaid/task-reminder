@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const COLOR_PRESETS = [
   "#6366F1", // Indigo
@@ -270,7 +271,7 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-[#E8E8EC] flex items-center justify-between gap-3">
+          <div className="pt-3 flex items-center justify-between gap-3">
             <Button
               type="button"
               variant="ghost"
@@ -445,7 +446,7 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+          <div className="flex justify-end gap-2.5 pt-3">
             <Button
               type="button"
               variant="secondary"
@@ -517,7 +518,7 @@ export default function CoursesPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+          <div className="flex justify-end gap-2.5 pt-3">
             <Button
               type="button"
               variant="secondary"
@@ -533,7 +534,7 @@ export default function CoursesPage() {
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={Boolean(deletingCourse)}
         onOpenChange={(open) => {
           if (!open) {
@@ -541,47 +542,27 @@ export default function CoursesPage() {
             setDeleteWarning(null);
           }
         }}
-        title="Hapus Mata Kuliah"
-        description="Konfirmasi penghapusan data mata kuliah"
-      >
-        <div className="space-y-4 text-xs text-[#6B6B6B]">
-          <p>
+        title="Hapus Mata Kuliah?"
+        description={
+          <>
             Apakah Anda yakin ingin menghapus mata kuliah{" "}
             <strong className="text-[#0A0A0A]">{deletingCourse?.name}</strong>?
-          </p>
-
-          {deleteWarning ? (
-            <div className="p-3 rounded-[6px] bg-amber-50 border border-amber-200 text-amber-800 space-y-2">
-              <p className="font-semibold text-amber-900">Perhatian:</p>
-              <p>{deleteWarning}</p>
-              <p>
-                Jika Anda memilih lanjutkan, relasi tugas terkait akan dilepaskan (menjadi tanpa mata kuliah) tanpa menghapus isi tugas tersebut.
-              </p>
-            </div>
-          ) : null}
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-[#E8E8EC]">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setDeletingCourse(null);
-                setDeleteWarning(null);
-              }}
-            >
-              Batal
-            </Button>
-            {deleteWarning ? (
-              <Button variant="destructive" onClick={() => handleDelete(true)}>
-                Tetap Hapus & Lepas Relasi Tugas
-              </Button>
-            ) : (
-              <Button variant="destructive" onClick={() => handleDelete(false)}>
-                Hapus
-              </Button>
-            )}
+          </>
+        }
+        confirmText={deleteWarning ? "Tetap Hapus & Lepas Relasi" : "Hapus"}
+        cancelText="Batal"
+        onConfirm={() => handleDelete(Boolean(deleteWarning))}
+      >
+        {deleteWarning ? (
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200/80 text-xs text-amber-800 space-y-1.5 leading-relaxed">
+            <p className="font-bold text-amber-900">Perhatian:</p>
+            <p>{deleteWarning}</p>
+            <p className="text-[11px] text-amber-700">
+              Jika Anda memilih lanjutkan, relasi tugas terkait akan dilepaskan (menjadi tanpa mata kuliah) tanpa menghapus isi tugas tersebut.
+            </p>
           </div>
-        </div>
-      </Dialog>
+        ) : null}
+      </ConfirmDialog>
     </div>
   );
 }

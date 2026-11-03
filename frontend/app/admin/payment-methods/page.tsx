@@ -31,6 +31,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function AdminPaymentMethodsPage() {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
@@ -585,11 +586,11 @@ export default function AdminPaymentMethodsPage() {
               </div>
             </div>
 
-            <DialogFooter className="flex items-center justify-end gap-2 border-t pt-3">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsOpen(false)}>
+            <DialogFooter className="flex items-center justify-end gap-2.5 pt-4">
+              <Button type="button" variant="secondary" size="sm" onClick={() => setIsOpen(false)}>
                 Batal
               </Button>
-              <Button type="submit" variant="primary" size="sm" isLoading={submitting} className="font-bold text-xs">
+              <Button type="submit" variant="primary" size="sm" isLoading={submitting} className="font-semibold text-xs">
                 {editingId ? "Simpan Perubahan" : "Tambahkan Metode"}
               </Button>
             </DialogFooter>
@@ -598,28 +599,22 @@ export default function AdminPaymentMethodsPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={Boolean(deletingItem)} onOpenChange={(open) => !open && setDeletingItem(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-red-600 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              Hapus Metode Pembayaran
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Apakah Anda yakin ingin menghapus metode pembayaran <strong>{deletingItem?.name}</strong>? Jika metode sudah pernah digunakan pada transaksi, metode akan dinonaktifkan secara otomatis agar data historis tetap aman.
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="flex items-center justify-end gap-2 border-t pt-3">
-            <Button variant="outline" size="sm" onClick={() => setDeletingItem(null)}>
-              Batal
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleDelete} isLoading={deleting} className="font-bold text-xs">
-              Hapus
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={Boolean(deletingItem)}
+        onOpenChange={(open) => !open && setDeletingItem(null)}
+        title="Hapus Metode Pembayaran?"
+        description={
+          <>
+            Apakah Anda yakin ingin menghapus metode pembayaran{" "}
+            <strong className="text-[#0A0A0A]">{deletingItem?.name}</strong>? Jika metode sudah pernah digunakan pada transaksi, metode akan dinonaktifkan secara otomatis agar data historis tetap aman.
+          </>
+        }
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="destructive"
+        onConfirm={handleDelete}
+        isLoading={deleting}
+      />
     </div>
   );
 }

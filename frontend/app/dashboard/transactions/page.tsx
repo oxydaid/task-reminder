@@ -767,7 +767,7 @@ function UserTransactionsPageContent() {
                       </div>
                     </div>
 
-                    <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-2 border-t pt-3">
+                    <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-4">
                       {(selectedTx.status === "pending_payment" || selectedTx.status === "waiting_verification") ? (
                         <Button
                           variant="ghost"
@@ -783,7 +783,7 @@ function UserTransactionsPageContent() {
                         <div />
                       )}
 
-                      <Button size="sm" variant="outline" onClick={() => setSelectedTx(null)}>
+                      <Button size="sm" variant="secondary" onClick={() => setSelectedTx(null)}>
                         Tutup
                       </Button>
                     </DialogFooter>

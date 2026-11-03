@@ -484,8 +484,8 @@ export default function AdminTransactionsPage() {
                 )}
               </div>
 
-              <DialogFooter>
-                <Button size="sm" variant="outline" onClick={() => setSelectedTx(null)}>
+              <DialogFooter className="pt-4">
+                <Button size="sm" variant="secondary" onClick={() => setSelectedTx(null)}>
                   Tutup
                 </Button>
               </DialogFooter>

@@ -29,6 +29,7 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Pagination } from "@/components/ui/pagination";
 
 export default function TasksPage() {
@@ -484,7 +485,7 @@ export default function TasksPage() {
             </Select>
           </div>
 
-          <div className="pt-3 border-t border-[#E8E8EC] flex items-center justify-between gap-3">
+          <div className="pt-3 flex items-center justify-between gap-3">
             <Button
               type="button"
               variant="ghost"
@@ -773,7 +774,7 @@ export default function TasksPage() {
             </label>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+          <div className="flex justify-end gap-2.5 pt-3">
             <Button
               type="button"
               variant="secondary"
@@ -891,7 +892,7 @@ export default function TasksPage() {
             </label>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+          <div className="flex justify-end gap-2.5 pt-3">
             <Button
               type="button"
               variant="secondary"
@@ -907,30 +908,18 @@ export default function TasksPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={Boolean(deletingTask)}
-        onOpenChange={(open) => {
-          if (!open) setDeletingTask(null);
-        }}
-        title="Hapus Tugas"
-        description="Apakah Anda yakin ingin menghapus tugas ini?"
-      >
-        <div className="space-y-4 text-xs text-[#6B6B6B]">
-          <p>
-            Tugas <strong className="text-[#0A0A0A]">{deletingTask?.title}</strong> dan jadwal
-            pengingat terkait akan dibatalkan secara permanen.
-          </p>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-[#E8E8EC]">
-            <Button variant="secondary" onClick={() => setDeletingTask(null)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Ya, Hapus
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+        onOpenChange={(open) => !open && setDeletingTask(null)}
+        title="Hapus Tugas?"
+        description={
+          <>
+            Tugas <strong className="text-[#0A0A0A]">{deletingTask?.title}</strong> dan seluruh jadwal pengingat WhatsApp terkait akan dibatalkan secara permanen.
+          </>
+        }
+        confirmText="Ya, Hapus"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

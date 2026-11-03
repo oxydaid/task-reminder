@@ -9,17 +9,19 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[#6366F1] text-white hover:bg-[#4F46E5] shadow-xs btn-primary-glow rounded-[6px]",
+          "bg-[#6366F1] text-white hover:bg-[#4F46E5] shadow-xs btn-primary-glow rounded-[8px]",
         primary:
-          "bg-[#6366F1] text-white hover:bg-[#4F46E5] shadow-xs btn-primary-glow rounded-[6px]",
+          "bg-[#6366F1] text-white hover:bg-[#4F46E5] shadow-xs btn-primary-glow rounded-[8px]",
         outline:
-          "border border-[#E8E8EC] bg-transparent text-[#0A0A0A] hover:bg-zinc-100 rounded-[6px]",
+          "border border-[#E8E8EC] bg-white text-[#0A0A0A] hover:bg-zinc-50 rounded-[8px]",
         secondary:
-          "bg-white border border-[#E8E8EC] text-[#0A0A0A] hover:bg-zinc-100 shadow-xs rounded-[6px]",
+          "bg-zinc-100 border border-transparent text-[#0A0A0A] hover:bg-zinc-200/80 shadow-none rounded-[8px]",
         ghost:
-          "text-[#6B6B6B] hover:text-[#0A0A0A] hover:bg-zinc-100 rounded-[6px]",
+          "text-[#6B6B6B] hover:text-[#0A0A0A] hover:bg-zinc-100 rounded-[8px]",
         destructive:
-          "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 rounded-[6px]",
+          "bg-red-600 text-white hover:bg-red-700 shadow-xs active:bg-red-800 rounded-[8px] font-semibold",
+        "destructive-soft":
+          "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 rounded-[8px]",
         link:
           "text-[#6366F1] underline-offset-4 hover:underline",
       },

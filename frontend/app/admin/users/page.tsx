@@ -31,6 +31,7 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Pagination } from "@/components/ui/pagination";
 
 export default function AdminUsersPage() {
@@ -458,7 +459,7 @@ export default function AdminUsersPage() {
             </Select>
           </div>
 
-          <div className="pt-3 border-t border-[#E8E8EC] flex items-center justify-between gap-3">
+          <div className="pt-3 flex items-center justify-between gap-3">
             <Button
               type="button"
               variant="ghost"
@@ -773,7 +774,7 @@ export default function AdminUsersPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+          <div className="flex justify-end gap-2.5 pt-3">
             <Button type="button" variant="secondary" onClick={() => setIsCreateOpen(false)}>
               Batal
             </Button>
@@ -857,7 +858,7 @@ export default function AdminUsersPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+          <div className="flex justify-end gap-2.5 pt-3">
             <Button type="button" variant="secondary" onClick={() => setEditingUser(null)}>
               Batal
             </Button>
@@ -869,34 +870,24 @@ export default function AdminUsersPage() {
       </Dialog>
 
       {/* Delete User Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={Boolean(deletingUser)}
-        onOpenChange={(open) => {
-          if (!open) setDeletingUser(null);
-        }}
-        title="Hapus Pengguna"
-        description="Konfirmasi penghapusan akun pengguna"
-      >
-        <div className="space-y-4 text-xs text-[#6B6B6B]">
-          <p>
+        onOpenChange={(open) => !open && setDeletingUser(null)}
+        title="Hapus Akun Pengguna?"
+        description={
+          <>
             Apakah Anda yakin ingin menghapus pengguna{" "}
             <strong className="text-[#0A0A0A]">{deletingUser?.name}</strong> (+
             {deletingUser?.whatsapp_number})?
-          </p>
-          <p className="text-red-600">
-            Perhatian: Seluruh mata kuliah, tugas, dan riwayat pengingat pengguna ini akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
-          </p>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-[#E8E8EC]">
-            <Button variant="secondary" onClick={() => setDeletingUser(null)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Ya, Hapus Pengguna
-            </Button>
-          </div>
+          </>
+        }
+        confirmText="Ya, Hapus Pengguna"
+        onConfirm={handleDelete}
+      >
+        <div className="p-3 rounded-xl bg-red-50 border border-red-200/80 text-xs text-red-800">
+          <strong>Perhatian:</strong> Seluruh mata kuliah, tugas, dan riwayat pengingat pengguna ini akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
         </div>
-      </Dialog>
+      </ConfirmDialog>
 
       {/* Quick Grant Trial Dialog */}
       <Dialog
@@ -947,11 +938,11 @@ export default function AdminUsersPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+          <div className="flex justify-end gap-2.5 pt-3">
             <Button type="button" variant="secondary" onClick={() => setTrialUser(null)}>
               Batal
             </Button>
-            <Button type="submit" variant="primary" isLoading={grantingTrial} className="font-bold">
+            <Button type="submit" variant="primary" isLoading={grantingTrial} className="font-semibold">
               <Gift className="w-3.5 h-3.5 mr-1" />
               Aktifkan Trial Sekarang
             </Button>

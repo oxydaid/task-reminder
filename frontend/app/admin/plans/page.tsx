@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function AdminPlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -409,7 +410,7 @@ export default function AdminPlansPage() {
             </Select>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+          <div className="flex justify-end gap-2.5 pt-3">
             <Button type="button" variant="secondary" onClick={() => setIsCreateOpen(false)}>
               Batal
             </Button>
@@ -505,7 +506,7 @@ export default function AdminPlansPage() {
             </Select>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#E8E8EC]">
+          <div className="flex justify-end gap-2.5 pt-3">
             <Button type="button" variant="secondary" onClick={() => setEditingPlan(null)}>
               Batal
             </Button>
@@ -517,29 +518,19 @@ export default function AdminPlansPage() {
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={Boolean(deletingPlan)}
-        onOpenChange={(open) => {
-          if (!open) setDeletingPlan(null);
-        }}
-        title="Hapus Paket"
-        description="Konfirmasi penghapusan paket"
-      >
-        <div className="space-y-4 text-xs text-[#6B6B6B]">
-          <p>
+        onOpenChange={(open) => !open && setDeletingPlan(null)}
+        title="Hapus Paket Layanan?"
+        description={
+          <>
             Apakah Anda yakin ingin menghapus paket{" "}
-            <strong className="text-[#0A0A0A]">{deletingPlan?.name}</strong>?
-          </p>
-          <div className="flex justify-end gap-2 pt-2 border-t border-[#E8E8EC]">
-            <Button variant="secondary" onClick={() => setDeletingPlan(null)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Ya, Hapus
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+            <strong className="text-[#0A0A0A]">{deletingPlan?.name}</strong>? Tindakan ini tidak dapat dibatalkan jika paket belum memiliki relasi transaksi.
+          </>
+        }
+        confirmText="Ya, Hapus"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

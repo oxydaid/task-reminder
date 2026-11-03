@@ -30,6 +30,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface SubItem {
   id: string;
@@ -449,9 +450,9 @@ export default function AdminSubscriptionsPage() {
             </div>
           </div>
 
-          <DialogFooter className="flex items-center justify-end gap-2 border-t pt-3">
+          <DialogFooter className="flex items-center justify-end gap-2.5 pt-4">
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => setModalMode(null)}
               disabled={submitting}
@@ -463,7 +464,7 @@ export default function AdminSubscriptionsPage() {
               size="sm"
               onClick={handleSubmitModal}
               isLoading={submitting}
-              className="font-bold text-xs"
+              className="font-semibold text-xs"
             >
               {modalMode === "trial" ? "Beri Trial Sekarang" : "Aktifkan Paket"}
             </Button>
@@ -472,52 +473,34 @@ export default function AdminSubscriptionsPage() {
       </Dialog>
 
       {/* Modal: Cancel Subscription */}
-      <Dialog open={Boolean(cancelSubItem)} onOpenChange={(open) => !open && setCancelSubItem(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-red-600 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              Cabut Langganan
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Apakah Anda yakin ingin mencabut paket{" "}
-              <strong>{cancelSubItem?.plan_name}</strong> untuk pengguna{" "}
-              <strong>{cancelSubItem?.user_name}</strong>? Akun pengguna akan otomatis dikembalikan ke paket Free.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-2 text-xs space-y-1">
-            <label className="font-semibold text-[#0A0A0A]">Alasan Pencabutan (Opsional):</label>
-            <input
-              type="text"
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Misal: Permintaan pembatalan / salah transfer"
-              className="w-full px-3 py-2 rounded-[6px] border border-[#E8E8EC] outline-none focus:border-red-500 text-xs"
-            />
-          </div>
-
-          <DialogFooter className="flex items-center justify-end gap-2 border-t pt-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCancelSubItem(null)}
-              disabled={cancelling}
-            >
-              Batal
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleConfirmCancel}
-              isLoading={cancelling}
-              className="font-bold text-xs"
-            >
-              Konfirmasi Cabut
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={Boolean(cancelSubItem)}
+        onOpenChange={(open) => !open && setCancelSubItem(null)}
+        title="Cabut Paket Langganan?"
+        description={
+          <>
+            Apakah Anda yakin ingin mencabut paket{" "}
+            <strong className="text-[#0A0A0A]">{cancelSubItem?.plan_name}</strong> untuk pengguna{" "}
+            <strong className="text-[#0A0A0A]">{cancelSubItem?.user_name}</strong>? Akun pengguna akan otomatis dikembalikan ke paket Free.
+          </>
+        }
+        confirmText="Konfirmasi Cabut"
+        cancelText="Batal"
+        variant="destructive"
+        onConfirm={handleConfirmCancel}
+        isLoading={cancelling}
+      >
+        <div className="py-1 text-xs space-y-1.5">
+          <label className="font-semibold text-[#0A0A0A]">Alasan Pencabutan (Opsional):</label>
+          <input
+            type="text"
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Misal: Permintaan pembatalan / salah transfer"
+            className="w-full px-3 py-2 rounded-[8px] border border-[#E8E8EC] outline-none focus:border-red-500 text-xs"
+          />
+        </div>
+      </ConfirmDialog>
     </div>
   );
 }

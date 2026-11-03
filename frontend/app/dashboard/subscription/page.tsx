@@ -572,12 +572,12 @@ export default function SubscriptionPage() {
             })}
           </div>
 
-          <DialogFooter className="flex items-center justify-between">
+          <DialogFooter className="flex items-center justify-between pt-4">
             <span className="text-xs text-[#6B6B6B]">
               Terpilih: <strong>{selectedTaskIds.length}</strong> / {downgradeData?.notification_limit}
             </span>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setIsDowngradeModalOpen(false)}>
+            <div className="flex gap-2.5">
+              <Button variant="secondary" size="sm" onClick={() => setIsDowngradeModalOpen(false)}>
                 Batal
               </Button>
               <Button

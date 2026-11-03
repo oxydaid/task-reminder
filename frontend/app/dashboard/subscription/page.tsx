@@ -17,8 +17,8 @@ import {
   RefreshCw,
   Info,
 } from "lucide-react";
-import { subscriptionsApi } from "@/lib/api";
-import { UserUsage } from "@/types";
+import { subscriptionsApi, transactionsApi } from "@/lib/api";
+import { UserUsage, Transaction } from "@/types";
 import { formatDateOnly, formatDateWIB, formatRupiah } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 export default function SubscriptionPage() {
   const [usage, setUsage] = useState<UserUsage | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [pendingTx, setPendingTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
@@ -45,12 +46,21 @@ export default function SubscriptionPage() {
     try {
       setLoading(true);
       setError("");
-      const [uData, hData] = await Promise.all([
+      const [uData, hData, txData] = await Promise.all([
         subscriptionsApi.getCurrent(),
         subscriptionsApi.getHistory(),
+        transactionsApi.list().catch(() => []),
       ]);
       setUsage(uData);
       setHistory(hData || []);
+
+      const foundPending = (txData || []).find(
+        (t) =>
+          t.status === "pending_payment" ||
+          t.status === "waiting_verification" ||
+          t.status === "rejected"
+      );
+      setPendingTx(foundPending || null);
     } catch (err: any) {
       setError(err.message || "Gagal memuat status langganan");
     } finally {
@@ -115,7 +125,7 @@ export default function SubscriptionPage() {
   const isPaidOrTrial = sub?.subscription_type === "paid" || sub?.subscription_type === "trial";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-28 md:pb-8 space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -133,7 +143,7 @@ export default function SubscriptionPage() {
             </Button>
           </Link>
           <Link href="/dashboard/transactions">
-            <Button variant="outline" size="sm" className="text-xs">
+            <Button variant="outline" size="sm" className="text-xs font-medium">
               Riwayat Transaksi
             </Button>
           </Link>
@@ -146,6 +156,59 @@ export default function SubscriptionPage() {
           <Button variant="ghost" size="xs" onClick={loadData}>
             Coba Lagi
           </Button>
+        </div>
+      ) : null}
+
+      {/* Pending / Active Transaction Notice */}
+      {pendingTx ? (
+        <div
+          className={`p-4 rounded-[10px] border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs ${
+            pendingTx.status === "rejected"
+              ? "bg-red-50 border-red-200 text-red-950"
+              : pendingTx.status === "waiting_verification"
+              ? "bg-blue-50 border-blue-200 text-blue-950"
+              : "bg-amber-50 border-amber-200 text-amber-950"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {pendingTx.status === "rejected" ? (
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            ) : pendingTx.status === "waiting_verification" ? (
+              <Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            ) : (
+              <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            )}
+            <div>
+              <div className="font-bold text-sm">
+                {pendingTx.status === "rejected"
+                  ? `Bukti Pembayaran Ditolak: Paket ${pendingTx.plan_name} (#${pendingTx.code})`
+                  : pendingTx.status === "waiting_verification"
+                  ? `Menunggu Verifikasi Admin: Paket ${pendingTx.plan_name} (#${pendingTx.code})`
+                  : `Transaksi Menunggu Pembayaran: Paket ${pendingTx.plan_name} (#${pendingTx.code})`}
+              </div>
+              <p className="text-xs mt-0.5 opacity-90 leading-relaxed">
+                {pendingTx.status === "rejected"
+                  ? `Catatan admin: "${pendingTx.rejection_reason || "Bukti transfer tidak sesuai"}". Harap unggah ulang bukti yang benar.`
+                  : pendingTx.status === "waiting_verification"
+                  ? `Total tagihan ${formatRupiah(pendingTx.total_amount)}. Foto bukti transfer Anda sedang diverifikasi oleh admin.`
+                  : `Total tagihan ${formatRupiah(pendingTx.total_amount)} via ${pendingTx.payment_method_name}. Harap selesaikan pembayaran & unggah bukti transfer.`}
+              </p>
+            </div>
+          </div>
+
+          <Link href={`/dashboard/transactions?id=${pendingTx.id}`} className="shrink-0 w-full sm:w-auto">
+            <Button
+              size="sm"
+              variant={pendingTx.status === "rejected" ? "destructive" : "primary"}
+              className="w-full sm:w-auto font-semibold text-xs h-8 shadow-xs"
+            >
+              {pendingTx.status === "rejected"
+                ? "Unggah Ulang Bukti"
+                : pendingTx.status === "waiting_verification"
+                ? "Lihat Detail Transaksi"
+                : "Bayar & Unggah Bukti"}
+            </Button>
+          </Link>
         </div>
       ) : null}
 
@@ -373,52 +436,94 @@ export default function SubscriptionPage() {
             Belum ada riwayat langganan sebelumnya.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs whitespace-nowrap">
-              <thead className="bg-zinc-50 border-b border-[#E8E8EC] text-[#6B6B6B] font-semibold uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="py-3 px-5">Paket</th>
-                  <th className="py-3 px-4">Tipe</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Mulai</th>
-                  <th className="py-3 px-5">Berakhir</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8E8EC]">
-                {history.map((h) => {
-                  const isCur = h.id === sub?.id;
-                  return (
-                    <tr key={h.id} className="hover:bg-zinc-50/60 transition-colors">
-                      <td className="py-3.5 px-5 font-semibold text-[#0A0A0A]">
-                        Paket {h.plan?.name || "Standard"}
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead className="bg-zinc-50 border-b border-[#E8E8EC] text-[#6B6B6B] font-semibold uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-3 px-5">Paket</th>
+                    <th className="py-3 px-4">Tipe</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Mulai</th>
+                    <th className="py-3 px-5">Berakhir</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E8E8EC]">
+                  {history.map((h) => {
+                    const isCur = h.id === sub?.id;
+                    return (
+                      <tr key={h.id} className="hover:bg-zinc-50/60 transition-colors">
+                        <td className="py-3.5 px-5 font-semibold text-[#0A0A0A]">
+                          Paket {h.plan?.name || "Standard"}
+                          {isCur ? (
+                            <span className="ml-2 text-[10px] bg-indigo-50 text-[#6366F1] px-1.5 py-0.5 rounded-[4px] font-bold">
+                              Saat ini
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-3.5 px-4 capitalize text-[#6B6B6B]">{h.subscription_type}</td>
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              h.status === "active"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : h.status === "trialing"
+                                ? "bg-amber-50 text-amber-700"
+                                : "bg-zinc-100 text-[#6B6B6B]"
+                            }`}
+                          >
+                            {h.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-[#6B6B6B] font-mono">{formatDateOnly(h.started_at)}</td>
+                        <td className="py-3.5 px-5 text-[#6B6B6B] font-mono">{formatDateOnly(h.expires_at) || "Permanen"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-[#E8E8EC]">
+              {history.map((h) => {
+                const isCur = h.id === sub?.id;
+                return (
+                  <div key={h.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-[#0A0A0A]">
+                        <span>Paket {h.plan?.name || "Standard"}</span>
                         {isCur ? (
-                          <span className="ml-2 text-[10px] bg-indigo-50 text-[#6366F1] px-1.5 py-0.5 rounded-[4px] font-bold">
+                          <span className="text-[10px] bg-indigo-50 text-[#6366F1] px-1.5 py-0.5 rounded-[4px] font-bold">
                             Saat ini
                           </span>
                         ) : null}
-                      </td>
-                      <td className="py-3.5 px-4 capitalize text-[#6B6B6B]">{h.subscription_type}</td>
-                      <td className="py-3.5 px-4">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            h.status === "active"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : h.status === "trialing"
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-zinc-100 text-[#6B6B6B]"
-                          }`}
-                        >
-                          {h.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-[#6B6B6B] font-mono">{formatDateOnly(h.started_at)}</td>
-                      <td className="py-3.5 px-5 text-[#6B6B6B] font-mono">{formatDateOnly(h.expires_at) || "Permanen"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          h.status === "active"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : h.status === "trialing"
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-zinc-100 text-[#6B6B6B]"
+                        }`}
+                      >
+                        {h.status}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-[#6B6B6B] flex items-center justify-between">
+                      <span className="capitalize">{h.subscription_type}</span>
+                      <span className="font-mono text-[10px]">
+                        {formatDateOnly(h.started_at)} s/d {formatDateOnly(h.expires_at) || "Permanen"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </Card>
 

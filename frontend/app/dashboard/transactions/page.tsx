@@ -239,7 +239,7 @@ function UserTransactionsPageContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-28 md:pb-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -248,8 +248,8 @@ function UserTransactionsPageContent() {
             Daftar transaksi langganan dan status verifikasi bukti pembayaran manual Anda.
           </p>
         </div>
-        <Link href="/pricing">
-          <Button size="sm" className="font-semibold shadow-xs">
+        <Link href="/pricing" className="shrink-0">
+          <Button size="sm" className="w-full sm:w-auto font-semibold shadow-xs">
             Upgrade / Perpanjang Paket
           </Button>
         </Link>
@@ -267,8 +267,8 @@ function UserTransactionsPageContent() {
         </div>
       )}
 
-      {/* Transactions Table Card (Full-bleed Card, No double padding) */}
-      <Card className="p-0 overflow-hidden">
+      {/* Transactions Table Card (Full-bleed Card, Responsive) */}
+      <Card className="p-0 overflow-hidden border-[#E8E8EC] shadow-xs">
         {loading ? (
           <div className="text-center py-16 text-xs text-[#9C9C9C]">
             Memuat data transaksi...
@@ -284,71 +284,138 @@ function UserTransactionsPageContent() {
             </Link>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs whitespace-nowrap">
-              <thead className="bg-zinc-50 border-b border-[#E8E8EC] text-[#6B6B6B] font-semibold uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="py-3 px-5">Kode Transaksi</th>
-                  <th className="py-3 px-4">Paket</th>
-                  <th className="py-3 px-4">Metode Bayar</th>
-                  <th className="py-3 px-4">Total Tagihan</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Waktu Dibuat</th>
-                  <th className="py-3 px-5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8E8EC]">
-                {transactions.map((tx) => {
-                  const needsProof = tx.status === "pending_payment" || tx.status === "rejected";
-                  return (
-                    <tr
-                      key={tx.id}
-                      className={`hover:bg-zinc-50/70 transition-colors ${
-                        highlightedId === tx.id ? "bg-indigo-50/40" : ""
-                      }`}
-                    >
-                      <td className="py-3.5 px-5 font-mono font-bold text-[#0A0A0A]">
-                        {tx.code}
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-[#0A0A0A]">
-                        {tx.plan_name}
-                      </td>
-                      <td className="py-3.5 px-4 text-[#6B6B6B]">
-                        {tx.payment_method_name}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-[#6366F1]">
-                        {formatRupiah(tx.total_amount)}
-                      </td>
-                      <td className="py-3.5 px-4">{getStatusBadge(tx.status)}</td>
-                      <td className="py-3.5 px-4 text-[#9C9C9C] font-mono">{formatDateWIB(tx.created_at)}</td>
-                      <td className="py-3.5 px-5 text-right">
-                        {needsProof ? (
-                          <Button
-                            variant="primary"
-                            size="xs"
-                            onClick={() => openDetail(tx.id)}
-                            className="font-medium inline-flex items-center gap-1"
-                          >
-                            <Upload className="w-3 h-3" />
-                            <span>Unggah Bukti</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="secondary"
-                            size="xs"
-                            onClick={() => openDetail(tx.id)}
-                            className="font-medium"
-                          >
-                            Detail & Bukti
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {/* Desktop Table View (hidden on mobile) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead className="bg-zinc-50 border-b border-[#E8E8EC] text-[#6B6B6B] font-semibold uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-3 px-5">Kode Transaksi</th>
+                    <th className="py-3 px-4">Paket</th>
+                    <th className="py-3 px-4">Metode Bayar</th>
+                    <th className="py-3 px-4">Total Tagihan</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Waktu Dibuat</th>
+                    <th className="py-3 px-5 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E8E8EC]">
+                  {transactions.map((tx) => {
+                    const needsProof = tx.status === "pending_payment" || tx.status === "rejected";
+                    return (
+                      <tr
+                        key={tx.id}
+                        className={`hover:bg-zinc-50/70 transition-colors ${
+                          highlightedId === tx.id ? "bg-indigo-50/40" : ""
+                        }`}
+                      >
+                        <td className="py-3.5 px-5 font-mono font-bold text-[#0A0A0A]">
+                          {tx.code}
+                        </td>
+                        <td className="py-3.5 px-4 font-semibold text-[#0A0A0A]">
+                          {tx.plan_name}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#6B6B6B]">
+                          {tx.payment_method_name}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-[#6366F1]">
+                          {formatRupiah(tx.total_amount)}
+                        </td>
+                        <td className="py-3.5 px-4">{getStatusBadge(tx.status)}</td>
+                        <td className="py-3.5 px-4 text-[#9C9C9C] font-mono">{formatDateWIB(tx.created_at)}</td>
+                        <td className="py-3.5 px-5 text-right">
+                          {needsProof ? (
+                            <Button
+                              variant="primary"
+                              size="xs"
+                              onClick={() => openDetail(tx.id)}
+                              className="font-medium inline-flex items-center gap-1"
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>Unggah Bukti</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="secondary"
+                              size="xs"
+                              onClick={() => openDetail(tx.id)}
+                              className="font-medium"
+                            >
+                              Detail & Bukti
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View (block on mobile screens, no horizontal scroll needed) */}
+            <div className="md:hidden divide-y divide-[#E8E8EC]">
+              {transactions.map((tx) => {
+                const needsProof = tx.status === "pending_payment" || tx.status === "rejected";
+                return (
+                  <div
+                    key={tx.id}
+                    className={`p-4 space-y-3 transition-colors ${
+                      highlightedId === tx.id ? "bg-indigo-50/40" : "bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono font-bold text-xs text-[#0A0A0A]">
+                        #{tx.code}
+                      </span>
+                      <div>{getStatusBadge(tx.status)}</div>
+                    </div>
+
+                    <div className="flex items-baseline justify-between pt-1">
+                      <div>
+                        <div className="font-bold text-sm text-[#0A0A0A]">
+                          Paket {tx.plan_name}
+                        </div>
+                        <div className="text-[11px] text-[#6B6B6B] mt-0.5">
+                          {tx.payment_method_name}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-extrabold text-base text-[#6366F1]">
+                          {formatRupiah(tx.total_amount)}
+                        </div>
+                        <div className="text-[10px] text-[#9C9C9C] font-mono mt-0.5">
+                          {formatDateWIB(tx.created_at)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-1">
+                      {needsProof ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => openDetail(tx.id)}
+                          className="w-full text-xs font-semibold flex items-center justify-center gap-1.5 h-9 shadow-xs"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Unggah Bukti Pembayaran</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openDetail(tx.id)}
+                          className="w-full text-xs font-medium h-9"
+                        >
+                          Detail Transaksi & Bukti
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </Card>
 

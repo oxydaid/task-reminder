@@ -204,7 +204,7 @@ export const subscriptionsApi = {
 
 export const transactionsApi = {
   checkout: (data: { plan_id: string; payment_method_id: string; idempotency_key?: string }) =>
-    api.post<{ id: string; code: string; total_amount: number; status: string; expires_at: string }>(
+    api.post<Transaction>(
       "/transactions/checkout",
       data
     ),

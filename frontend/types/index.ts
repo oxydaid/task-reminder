@@ -197,6 +197,10 @@ export interface Transaction {
   created_at: string;
   updated_at: string;
   proofs?: PaymentProof[];
+  bank_name?: string;
+  account_name?: string;
+  account_number?: string;
+  qris_image_url?: string;
 }
 
 export interface AdminNotificationSettings {

@@ -24,18 +24,31 @@ func InitDB(dbPath string) (*DB, error) {
 		}
 	}
 
-	dsn := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)&_pragma=cache_size(-64000)&_pragma=temp_store(MEMORY)&_pragma=mmap_size(268435456)", dbPath)
+	dsn := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(10000)&_pragma=cache_size(-64000)&_pragma=temp_store(MEMORY)", dbPath)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 
-	db.SetMaxOpenConns(1) // SQLite single-writer safety
-	db.SetMaxIdleConns(1)
+	db.SetMaxOpenConns(10) // Allow concurrent readers and workers without pool deadlocks
+	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(time.Hour)
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping sqlite database: %w", err)
+	}
+
+	// Explicitly apply runtime pragmas for certainty across driver versions
+	pragmas := []string{
+		"PRAGMA foreign_keys = ON;",
+		"PRAGMA journal_mode = WAL;",
+		"PRAGMA synchronous = NORMAL;",
+		"PRAGMA busy_timeout = 10000;",
+		"PRAGMA cache_size = -64000;",
+		"PRAGMA temp_store = MEMORY;",
+	}
+	for _, p := range pragmas {
+		_, _ = db.Exec(p)
 	}
 
 	wrapped := &DB{db}

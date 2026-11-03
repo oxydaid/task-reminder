@@ -260,6 +260,7 @@ func (s *Scheduler) CheckAndSend() {
 
 		targets = append(targets, pt)
 	}
+	rows.Close() // Release connection immediately before processing targets
 
 	for _, pt := range targets {
 		stages := getStagesForTask(pt.DeadlineAt, pt.OffsetMinutes)

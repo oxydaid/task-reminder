@@ -49,6 +49,10 @@ type Transaction struct {
 	CreatedAt             string `json:"created_at"`
 	UpdatedAt             string `json:"updated_at"`
 	Proofs                []PaymentProof `json:"proofs,omitempty"`
+	BankName              string `json:"bank_name,omitempty"`
+	AccountName           string `json:"account_name,omitempty"`
+	AccountNumber         string `json:"account_number,omitempty"`
+	QRISImageURL          string `json:"qris_image_url,omitempty"`
 }
 
 type PaymentProof struct {
@@ -248,16 +252,18 @@ func (h *Handler) Checkout(c *fiber.Ctx) error {
 		})
 	}
 
-	// 6. Send WhatsApp Payment Instructions
-	if h.outbox != nil && user.WhatsAppNumber != "" {
-		var paymentInstruction string
-		if pm.Type == "bank_transfer" {
-			paymentInstruction = fmt.Sprintf("Silakan lakukan transfer ke:\n🏦 *Bank:* %s\n💳 *No. Rekening:* %s\n👤 *Atas Nama:* %s", pm.BankName, pm.AccountNumber, pm.AccountName)
-		} else {
-			paymentInstruction = fmt.Sprintf("Silakan lakukan pembayaran via *QRIS* (%s).\nAnda dapat memindai barcode QRIS langsung di halaman detail transaksi web.", pm.AccountName)
-		}
+	// 6. Send WhatsApp Payment Instructions & Admin Notification asynchronously
+	// This decouples outbox queuing from the HTTP response, guaranteeing instant checkout return
+	go func() {
+		if h.outbox != nil && user.WhatsAppNumber != "" {
+			var paymentInstruction string
+			if pm.Type == "bank_transfer" {
+				paymentInstruction = fmt.Sprintf("Silakan lakukan transfer ke:\n🏦 *Bank:* %s\n💳 *No. Rekening:* %s\n👤 *Atas Nama:* %s", pm.BankName, pm.AccountNumber, pm.AccountName)
+			} else {
+				paymentInstruction = fmt.Sprintf("Silakan lakukan pembayaran via *QRIS* (%s).\nAnda dapat memindai barcode QRIS langsung di halaman detail transaksi web.", pm.AccountName)
+			}
 
-		msg := fmt.Sprintf(`Halo %s! 👋 Terima kasih telah memilih Task Reminder.
+			msg := fmt.Sprintf(`Halo %s! 👋 Terima kasih telah memilih Task Reminder.
 
 *Instruksi Pembayaran Langganan*
 📋 *Kode Transaksi:* %s
@@ -270,23 +276,36 @@ func (h *Handler) Checkout(c *fiber.Ctx) error {
 
 Setelah transfer berhasil, harap unggah foto bukti transfer di dashboard web Task Reminder untuk diverifikasi oleh Admin.
 ⏱️ *Batas Waktu Pembayaran:* 24 Jam. Terima kasih! 🙏`,
-			user.Name, code, plan.Name, formatRupiah(subtotal), formatRupiah(feeAmount), formatRupiah(totalAmount), paymentInstruction)
+				user.Name, code, plan.Name, formatRupiah(subtotal), formatRupiah(feeAmount), formatRupiah(totalAmount), paymentInstruction)
 
-		dedupKey := fmt.Sprintf("tx_checkout_%s", txID)
-		_, _ = h.outbox.Enqueue(user.WhatsAppNumber, msg, "", dedupKey)
-	}
+			dedupKey := fmt.Sprintf("tx_checkout_%s", txID)
+			_, _ = h.outbox.Enqueue(user.WhatsAppNumber, msg, "", dedupKey)
+		}
 
-	// 7. Notify Admins if enabled
-	h.notifyAdminsNewTransaction(code, user.Name, user.WhatsAppNumber, plan.Name, totalAmount)
+		// 7. Notify Admins if enabled
+		h.notifyAdminsNewTransaction(code, user.Name, user.WhatsAppNumber, plan.Name, totalAmount)
+	}()
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"success": true,
 		"data": fiber.Map{
-			"id":           txID,
-			"code":         code,
-			"total_amount": totalAmount,
-			"status":       "pending_payment",
-			"expires_at":   expiresAt,
+			"id":                     txID,
+			"code":                   code,
+			"plan_name":              plan.Name,
+			"plan_price":             plan.Price,
+			"payment_method_name":    pm.Name,
+			"payment_method_type":    pm.Type,
+			"payment_method_details": detailsSnapshot,
+			"bank_name":              pm.BankName,
+			"account_name":           pm.AccountName,
+			"account_number":         pm.AccountNumber,
+			"qris_image_url":         pm.QRISImageURL,
+			"subtotal":               subtotal,
+			"fee_amount":             feeAmount,
+			"total_amount":           totalAmount,
+			"status":                 "pending_payment",
+			"expires_at":             expiresAt,
+			"created_at":             nowStr,
 		},
 		"message": "Transaksi berhasil dibuat",
 	})
@@ -323,7 +342,7 @@ func (h *Handler) UploadProof(c *fiber.Ctx) error {
 		})
 	}
 
-	if currentStatus != "pending_payment" && currentStatus != "waiting_verification" {
+	if currentStatus != "pending_payment" && currentStatus != "waiting_verification" && currentStatus != "rejected" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
 			"error":   fiber.Map{"code": "INVALID_STATUS", "message": "Bukti pembayaran tidak dapat diunggah untuk status transaksi saat ini"},
@@ -381,11 +400,21 @@ func (h *Handler) UploadProof(c *fiber.Ctx) error {
 		})
 	}
 
-	// Notify admins
-	h.notifyAdminsPaymentProof(code, user.Name, user.WhatsAppNumber, planName, totalAmount)
+	// Notify admins in background goroutine to keep client response swift
+	go func() {
+		h.notifyAdminsPaymentProof(code, user.Name, user.WhatsAppNumber, planName, totalAmount)
+	}()
 
 	return c.JSON(fiber.Map{
 		"success": true,
+		"data": fiber.Map{
+			"id":             proofID,
+			"transaction_id": txID,
+			"file_path":      req.FilePath,
+			"file_name":      req.FileName,
+			"file_size":      req.FileSize,
+			"status":         "waiting_verification",
+		},
 		"message": "Bukti pembayaran berhasil diunggah. Mohon tunggu verifikasi admin.",
 	})
 }
@@ -447,9 +476,11 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 		       t.plan_id, t.payment_method_id, t.plan_name, t.plan_price, t.plan_course_limit, t.plan_task_limit, t.plan_notification_limit,
 		       t.payment_method_name, t.payment_method_type, t.payment_method_details,
 		       t.fee_type, t.fee_percentage, t.fee_fixed, t.fee_amount, t.subtotal, t.total_amount,
-		       t.status, t.expires_at, t.paid_at, t.verified_by, t.admin_notes, t.rejection_reason, t.created_at, t.updated_at
+		       t.status, t.expires_at, t.paid_at, t.verified_by, t.admin_notes, t.rejection_reason, t.created_at, t.updated_at,
+		       COALESCE(pm.bank_name, ''), COALESCE(pm.account_name, ''), COALESCE(pm.account_number, ''), COALESCE(pm.qris_image_url, '')
 		FROM transactions t
 		JOIN users u ON t.user_id = u.id
+		LEFT JOIN payment_methods pm ON t.payment_method_id = pm.id
 		WHERE t.id = ?
 	`
 	args := []interface{}{txID}
@@ -460,6 +491,7 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 
 	var tx Transaction
 	var paidAt, verifiedBy, adminNotes, rejReason sql.NullString
+	var bName, aName, aNum, qrisUrl string
 
 	err := h.db.QueryRow(query, args...).Scan(
 		&tx.ID, &tx.Code, &tx.UserID, &tx.UserName, &tx.UserPhone,
@@ -467,6 +499,7 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 		&tx.PaymentMethodName, &tx.PaymentMethodType, &tx.PaymentMethodDetails,
 		&tx.FeeType, &tx.FeePercentage, &tx.FeeFixed, &tx.FeeAmount, &tx.Subtotal, &tx.TotalAmount,
 		&tx.Status, &tx.ExpiresAt, &paidAt, &verifiedBy, &adminNotes, &rejReason, &tx.CreatedAt, &tx.UpdatedAt,
+		&bName, &aName, &aNum, &qrisUrl,
 	)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -474,6 +507,11 @@ func (h *Handler) GetByID(c *fiber.Ctx) error {
 			"error":   fiber.Map{"code": "NOT_FOUND", "message": "Transaksi tidak ditemukan"},
 		})
 	}
+
+	tx.BankName = bName
+	tx.AccountName = aName
+	tx.AccountNumber = aNum
+	tx.QRISImageURL = qrisUrl
 
 	if paidAt.Valid {
 		tx.PaidAt = &paidAt.String
@@ -820,7 +858,19 @@ func (h *Handler) notifyAdminsNewTransaction(code, userName, userPhone, planName
 	if err != nil {
 		return
 	}
-	defer rows.Close()
+
+	type adminRecipient struct {
+		phone string
+		name  string
+	}
+	var admins []adminRecipient
+	for rows.Next() {
+		var a adminRecipient
+		if err := rows.Scan(&a.phone, &a.name); err == nil && a.phone != "" {
+			admins = append(admins, a)
+		}
+	}
+	rows.Close() // Explicitly release DB connection before enqueuing to prevent pool deadlocks
 
 	msg := fmt.Sprintf(`🔔 *Notifikasi Transaksi Baru (Admin)*
 
@@ -832,12 +882,9 @@ Terdapat transaksi baru dibuat:
 
 Menunggu transfer dari user.`, code, userName, userPhone, planName, formatRupiah(total))
 
-	for rows.Next() {
-		var adminPhone, adminName string
-		if err := rows.Scan(&adminPhone, &adminName); err == nil && adminPhone != "" {
-			dedup := fmt.Sprintf("admin_new_tx_%s_%s", code, adminPhone)
-			_, _ = h.outbox.Enqueue(adminPhone, msg, "", dedup)
-		}
+	for _, a := range admins {
+		dedup := fmt.Sprintf("admin_new_tx_%s_%s", code, a.phone)
+		_, _ = h.outbox.Enqueue(a.phone, msg, "", dedup)
 	}
 }
 
@@ -854,7 +901,19 @@ func (h *Handler) notifyAdminsPaymentProof(code, userName, userPhone, planName s
 	if err != nil {
 		return
 	}
-	defer rows.Close()
+
+	type adminRecipient struct {
+		phone string
+		name  string
+	}
+	var admins []adminRecipient
+	for rows.Next() {
+		var a adminRecipient
+		if err := rows.Scan(&a.phone, &a.name); err == nil && a.phone != "" {
+			admins = append(admins, a)
+		}
+	}
+	rows.Close() // Explicitly release DB connection before enqueuing to prevent pool deadlocks
 
 	msg := fmt.Sprintf(`📥 *Bukti Pembayaran Baru (Admin)*
 
@@ -866,12 +925,9 @@ User telah mengunggah bukti pembayaran:
 
 Silakan tinjau dan verifikasi pembayaran di dashboard admin Task Reminder!`, code, userName, userPhone, planName, formatRupiah(total))
 
-	for rows.Next() {
-		var adminPhone, adminName string
-		if err := rows.Scan(&adminPhone, &adminName); err == nil && adminPhone != "" {
-			dedup := fmt.Sprintf("admin_proof_%s_%s", code, adminPhone)
-			_, _ = h.outbox.Enqueue(adminPhone, msg, "", dedup)
-		}
+	for _, a := range admins {
+		dedup := fmt.Sprintf("admin_proof_%s_%s", code, a.phone)
+		_, _ = h.outbox.Enqueue(a.phone, msg, "", dedup)
 	}
 }
 
